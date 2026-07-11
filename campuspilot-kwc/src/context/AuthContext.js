@@ -4,12 +4,16 @@ import { getPermissions, isAuthenticated, getUser } from "../utils/permissions";
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
+export function AuthProvider({ children, kwcData = null }) {
   const [user, setUser] = useState(() => getUser());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const loadData = useCallback(async () => {
+    if (kwcData) {
+      setData(kwcData);
+      return;
+    }
     if (!isAuthenticated()) {
       setData(null);
       return;
@@ -19,27 +23,29 @@ export function AuthProvider({ children }) {
       const [
         overview, riskDistribution, students, courses, behaviors,
         warnings, workflow, workflowLogs, riskTrend, effectiveness,
-        integrationStatus, agentInsight, roles, auditLogs,
+        integrationStatus, lowcodeBlueprint, agentWorkflow, reportCenter, cloudNative, multimodal, agentInsight, roles, auditLogs,
       ] = await Promise.all([
         api.fetchOverview(), api.fetchRiskDistribution(),
         api.fetchStudents(), api.fetchCourses(),
         api.fetchBehaviors(), api.fetchWarnings(),
         api.fetchWorkflow(), api.fetchWorkflowLogs(),
         api.fetchRiskTrend(), api.fetchEffectiveness(),
-        api.fetchIntegrationStatus(), api.fetchAgentInsight(),
-        api.fetchRoles(), api.fetchAuditLogs(),
+        api.fetchIntegrationStatus(),
+        api.fetchLowcodeBlueprint(), api.fetchAgentWorkflow(),
+        api.fetchReportCenter(), api.fetchCloudNative(), api.fetchMultimodal(),
+        api.fetchAgentInsight(), api.fetchRoles(), api.fetchAuditLogs(),
       ]);
       setData({
         overview, riskDistribution, students, courses, behaviors,
         warnings, workflow, workflowLogs, riskTrend, effectiveness,
-        integrationStatus, agentInsight, roles, auditLogs,
+        integrationStatus, lowcodeBlueprint, agentWorkflow, reportCenter, cloudNative, multimodal, agentInsight, roles, auditLogs,
       });
     } catch (err) {
       console.error("Failed to load data:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [kwcData]);
 
   const login = useCallback((userData) => {
     localStorage.setItem("campuspilot:user", JSON.stringify(userData));

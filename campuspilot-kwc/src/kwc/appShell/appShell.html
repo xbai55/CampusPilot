@@ -1,0 +1,11 @@
+<template>
+    <div class="shell">
+        <slot name="sidebar"></slot>
+        <main class="main">
+            <slot name="topbar"></slot>
+            <section class="view">
+                <slot></slot>
+            </section>
+        </main>
+    </div>
+</template>

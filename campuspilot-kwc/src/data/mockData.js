@@ -137,6 +137,61 @@ export const mockData = {
     { time: "2026-06-06 18:47", actor: "CampusPilot Agent", action: "生成高风险帮扶建议" },
     { time: "2026-06-06 18:55", actor: "陈导师", action: "更新导师帮扶措施" },
   ],
+  lowcodeBlueprint: {
+    objects: [
+      { name: "学生画像", code: "cp_student_profile", type: "领域模型 + 表单", purpose: "沉淀学生基础信息、目标、学业表现、行为指标和风险标签。" },
+      { name: "课程成绩", code: "cp_course_score", type: "业务对象 + 列表报表", purpose: "为风险解释和导师帮扶提供课程证据。" },
+      { name: "学习行为", code: "cp_learning_behavior", type: "采集表单 + 异常规则", purpose: "记录出勤、作业、平台活跃和课堂互动。" },
+      { name: "风险预警单", code: "cp_risk_warning", type: "流程表单", purpose: "承载风险识别、确认、帮扶、反馈和结案。" },
+      { name: "风险处理日志", code: "cp_warning_log", type: "流程日志对象", purpose: "保留每次状态变更和处理说明。" },
+    ],
+    platformCapabilities: [
+      { name: "表单及插件开发", status: "已设计", detail: "确认、导师计划、学生反馈和结案动作对应表单插件事件。" },
+      { name: "流程服务", status: "已设计", detail: "风险识别 -> 预警生成 -> 确认 -> 帮扶 -> 反馈 -> 复评结案。" },
+      { name: "报表", status: "已实现前端看板", detail: "风险分布、状态分布、趋势、专业对比和帮扶成效。" },
+      { name: "集成开发", status: "已预留", detail: "通过环境变量与金蝶 Agent API / OpenAPI 边界对接。" },
+    ],
+  },
+  agentWorkflow: {
+    agentName: "CampusPilot 学业成长助手",
+    modelRoute: "通过苍穹平台统一接入 DeepSeek / 豆包 / 通义千问等模型",
+    rag: [
+      { source: "学生画像知识库", content: "学生基础信息、成长目标、课程短板和风险规则。" },
+      { source: "帮扶政策知识库", content: "教育强国、拔尖创新人才培养、心理健康和学业帮扶政策摘要。" },
+      { source: "历史预警案例库", content: "预警单、处理轨迹、导师措施、学生反馈和结案结果。" },
+    ],
+    tools: [
+      { name: "query_student_profile", method: "GET /api/campuspilot/students", purpose: "查询学生画像并作为回答主证据。" },
+      { name: "query_warning_order", method: "GET /api/campuspilot/warnings", purpose: "查询已有预警单，避免重复建单。" },
+      { name: "create_warning_order", method: "POST /api/campuspilot/warnings/suggest", purpose: "生成结构化预警建议并进入待确认。" },
+      { name: "update_warning_status", method: "POST /api/campuspilot/warnings/{code}/{action}", purpose: "推进确认、导师计划、学生反馈和结案。" },
+    ],
+    workflow: [
+      { step: "理解问题", detail: "识别学生、角色、风险类型和期望输出。" },
+      { step: "检索知识库", detail: "RAG 拉取规则、政策和历史案例。" },
+      { step: "调用工具", detail: "查询画像、课程、行为、预警单等实时数据。" },
+      { step: "多步推理", detail: "综合 GPA、挂科、出勤、作业、目标和历史处理判断风险。" },
+      { step: "结构化输出", detail: "输出风险等级、依据、建议处理人、复评时间和预警单字段。" },
+    ],
+  },
+  reportCenter: [
+    { name: "学业风险驾驶舱", metric: "风险等级分布、预警状态、结案率", decision: "帮助学院管理者判断风险治理压力。" },
+    { name: "学生画像报告", metric: "GPA、挂科、出勤、作业、科创参与度", decision: "帮助辅导员和导师定位学生主要短板。" },
+    { name: "帮扶成效报表", metric: "处理周期、结案数、改善案例", decision: "验证帮扶措施是否真正产生改善。" },
+    { name: "Agent 建议审计报表", metric: "建议来源、工具调用、人工确认结果", decision: "避免 AI 黑箱，便于答辩说明可控性。" },
+  ],
+  cloudNative: [
+    { layer: "前端", unit: "campuspilot-kwc build 静态资源", deploy: "可由 Java 静态服务、Nginx 或对象存储托管。" },
+    { layer: "业务服务", unit: "campuspilot-server Java 21 HTTP 服务", deploy: "无框架依赖，适合容器化和云主机部署。" },
+    { layer: "数据层", unit: "PostgreSQL schema.sql / seed.sql", deploy: "当前内存数据可平滑迁移到 PostgreSQL。" },
+    { layer: "Agent 集成", unit: "CAMPUSPILOT_AGENT_API_URL", deploy: "通过环境变量切换本地兜底与远程金蝶 Agent API。" },
+  ],
+  multimodal: [
+    { input: "学生上传学习计划 PDF / 文档", model: "多模态/文档理解模型", output: "提取目标、困难和阶段计划，写入成长画像。", status: "接口预留" },
+    { input: "课堂签到或活动图片", model: "视觉理解模型", output: "辅助识别出勤异常和活动参与证据。", status: "演示设计" },
+    { input: "学生语音反馈", model: "语音识别 + 情感分析", output: "生成帮扶反馈摘要并提示辅导员复核。", status: "演示设计" },
+    { input: "成绩单截图", model: "OCR + 结构化抽取", output: "提取课程成绩，触发风险规则或补强建议。", status: "后续增强" },
+  ],
 };
 
 export const routeMeta = {

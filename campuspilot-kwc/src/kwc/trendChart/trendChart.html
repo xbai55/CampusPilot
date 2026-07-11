@@ -1,0 +1,19 @@
+<template>
+    <div class="trend-chart">
+        <template for:each={chartItems} for:item="item">
+            <div key={item.week} class="trend-week">
+                <div class="trend-bars">
+                    <span class="danger" style={item.highH}></span>
+                    <span class="warning" style={item.watchH}></span>
+                    <span class="done" style={item.doneH}></span>
+                </div>
+                <strong>{item.week}</strong>
+            </div>
+        </template>
+    </div>
+    <div class="legend-row">
+        <span><i class="danger"></i>高风险</span>
+        <span><i class="warning"></i>关注</span>
+        <span><i class="done"></i>结案</span>
+    </div>
+</template>

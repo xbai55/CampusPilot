@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { scopeStudents, scopeCourses, scopeBehaviors } from "../../utils/permissions";
-import Panel from "../../components/Panel/Panel";
-import RiskPill from "../../components/RiskPill/RiskPill";
-import ScoreLine from "../../components/ScoreLine/ScoreLine";
 
 export default function Students() {
   const { data, user } = useAuth();
@@ -28,9 +25,9 @@ export default function Students() {
 
   if (!selected) {
     return (
-      <Panel eyebrow="学生画像" title="未找到匹配学生">
+      <cp-panel eyebrow="学生画像" title="未找到匹配学生">
         <div className="agent-main"><p>请换用学生姓名、编号、专业或风险等级继续检索。</p></div>
-      </Panel>
+      </cp-panel>
     );
   }
 
@@ -40,27 +37,28 @@ export default function Students() {
   return (
     <>
       <section className="split-workspace">
-        <Panel eyebrow="学生队列" title="按风险分数排序" actions={<span className="role-pill">{user?.role}</span>} className="list-panel">
+        <cp-panel eyebrow="学生队列" title="按风险分数排序" className="list-panel">
+          <span slot="actions" className="role-pill">{user?.role}</span>
           <div className="student-list-table">
             {students.map((s, i) => (
               <button key={s.no} className={`student-row ${i === selectedIndex ? "active" : ""}`} type="button" onClick={() => setSelectedIndex(i)}>
                 <span className="avatar small">{s.name.slice(-1)}</span>
                 <strong>{s.name}</strong>
                 <span>{s.major}</span>
-                <RiskPill level={s.riskLevel} />
+                <cp-risk-pill level={s.riskLevel}></cp-risk-pill>
                 <b>{s.riskScore}</b>
               </button>
             ))}
           </div>
-        </Panel>
+        </cp-panel>
 
-        <Panel className="detail-panel">
+        <cp-panel className="detail-panel">
           <div className="entity-top">
             <div className="person-line">
               <span className="avatar">{selected.name.slice(-2)}</span>
               <div><strong>{selected.name}</strong><div className="student-meta">{selected.no} · {selected.college} · {selected.className}</div></div>
             </div>
-            <RiskPill level={selected.riskLevel} />
+            <cp-risk-pill level={selected.riskLevel}></cp-risk-pill>
           </div>
           <div className="evidence-strip">
             {[["风险分数", selected.riskScore], ["GPA", selected.gpa], ["挂科数", selected.failed], ["出勤率", `${selected.attendance}%`], ["作业完成率", `${selected.assignment}%`], ["职业目标", selected.goal]].map(([label, value]) => (
@@ -71,9 +69,9 @@ export default function Students() {
             <div>
               <h3>风险证据</h3>
               <p className="card-note">{selected.reason}</p>
-              <ScoreLine label="GPA" value={Math.round((selected.gpa / 4) * 100)} color="#1267e8" />
-              <ScoreLine label="出勤率" value={selected.attendance} color={selected.attendance < 80 ? "#d43f3a" : "#24966d"} />
-              <ScoreLine label="作业完成率" value={selected.assignment} color={selected.assignment < 70 ? "#d43f3a" : "#24966d"} />
+              <cp-score-line label="GPA" value={Math.round((selected.gpa / 4) * 100)} color="#1267e8"></cp-score-line>
+              <cp-score-line label="出勤率" value={selected.attendance} color={selected.attendance < 80 ? "#d43f3a" : "#24966d"}></cp-score-line>
+              <cp-score-line label="作业完成率" value={selected.assignment} color={selected.assignment < 70 ? "#d43f3a" : "#24966d"}></cp-score-line>
             </div>
             <div>
               <h3>课程与行为</h3>
@@ -88,13 +86,14 @@ export default function Students() {
             </div>
           </div>
           <div className="agent-main"><strong>AI 建议</strong><p>{selected.advice}</p></div>
-        </Panel>
+        </cp-panel>
       </section>
-      <Panel eyebrow="字段设计" title="学生画像业务对象字段" actions={<span className="role-pill">Kingdee BOS Object</span>}>
+      <cp-panel eyebrow="字段设计" title="学生画像业务对象字段">
+        <span slot="actions" className="role-pill">Kingdee BOS Object</span>
         <div className="field-row">
           {["学院 / 专业 / 年级 / 班级", "职业目标 / 兴趣方向", "GPA / 学分完成率 / 挂科数", "出勤率 / 作业完成率", "风险等级 / 风险分数", "风险原因 / AI 建议 / 当前状态"].map((f) => <span key={f}>{f}</span>)}
         </div>
-      </Panel>
+      </cp-panel>
     </>
   );
 }

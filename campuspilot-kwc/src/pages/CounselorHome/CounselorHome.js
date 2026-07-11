@@ -2,9 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { scopeStudents, scopeWarnings } from "../../utils/permissions";
-import Panel from "../../components/Panel/Panel";
-import RiskPill from "../../components/RiskPill/RiskPill";
-import StatusPill from "../../components/StatusPill/StatusPill";
 
 export default function CounselorHome() {
   const { data, user } = useAuth();
@@ -34,17 +31,18 @@ export default function CounselorHome() {
         ))}
       </section>
       <section className="ops-board">
-        <Panel eyebrow="风险处置队列" title="今天要处理什么" actions={<span className="role-pill">当前任务</span>}>
+        <cp-panel eyebrow="风险处置队列" title="今天要处理什么">
+          <span slot="actions" className="role-pill">当前任务</span>
           <div className="student-queue">
             {["确认待处理预警", "填写辅导员意见", "跟踪学生反馈"].map((item, i) => (
               <div key={i} className="queue-row"><span className="rank">{i + 1}</span><span className="queue-person"><strong>{item}</strong><em>识别并确认风险学生。</em></span><b>{i + 1}</b></div>
             ))}
           </div>
-        </Panel>
-        <Panel eyebrow="当前关注对象" title={targetStudent ? targetStudent.name : "暂无可见学生"}>
+        </cp-panel>
+        <cp-panel eyebrow="当前关注对象" title={targetStudent ? targetStudent.name : "暂无可见学生"}>
           {targetStudent ? (
             <>
-              {targetStudent?.riskKey && <RiskPill level={targetStudent.riskLevel} />}
+              {targetStudent?.riskKey && <cp-risk-pill level={targetStudent.riskLevel}></cp-risk-pill>}
               <div className="evidence-strip compact">
                 {[["风险分数", targetStudent.riskScore], ["GPA", targetStudent.gpa], ["挂科", targetStudent.failed], ["出勤", `${targetStudent.attendance}%`], ["作业", `${targetStudent.assignment}%`]].map(([label, value]) => (
                   <span key={label}><em>{label}</em><strong>{value}</strong></span>
@@ -56,9 +54,9 @@ export default function CounselorHome() {
             <div className="agent-main"><strong>暂无业务数据</strong><p>当前角色没有可见学生数据。</p></div>
           )}
           {targetWarning && (
-            <div className="next-warning"><StatusPill status={targetWarning.status} statusKey={targetWarning.statusKey} /><strong>{targetWarning.code}</strong><p>{targetWarning.title}</p></div>
+            <div className="next-warning"><cp-status-pill status={targetWarning.status} status-key={targetWarning.statusKey}></cp-status-pill><strong>{targetWarning.code}</strong><p>{targetWarning.title}</p></div>
           )}
-        </Panel>
+        </cp-panel>
       </section>
     </>
   );

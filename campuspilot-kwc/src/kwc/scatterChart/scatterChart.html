@@ -1,0 +1,9 @@
+<template>
+    <div class="scatter-chart" aria-label="GPA 与出勤率散点图">
+        <span class="axis-label y">出勤率</span>
+        <span class="axis-label x">GPA</span>
+        <template for:each={points} for:item="pt">
+            <span key={pt.no} class={pt.pointClass} style={pt.pointStyle} title={pt.tooltip}>{pt.nameLabel}</span>
+        </template>
+    </div>
+</template>

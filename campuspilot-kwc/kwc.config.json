@@ -1,0 +1,8 @@
+{
+  "modules": [
+    {
+      "name": "code",
+      "path": "src/modules/code"
+    }
+  ]
+}

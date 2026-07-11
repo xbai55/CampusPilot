@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { scopeAuditLogs } from "../../utils/permissions";
-import Panel from "../../components/Panel/Panel";
 
 export default function User() {
   const { user, data, permissions, logout } = useAuth();
@@ -14,7 +13,8 @@ export default function User() {
   return (
     <>
       <section className="content-grid">
-        <Panel eyebrow="当前账号" title={user.name} actions={<span className="role-pill">{user.role}</span>}>
+        <cp-panel eyebrow="当前账号" title={user.name}>
+          <span slot="actions" className="role-pill">{user.role}</span>
           <p className="muted">{user.email} · {user.college}</p>
           <section className="role-scenario">
             <div className="agent-main">
@@ -31,22 +31,23 @@ export default function User() {
               ))}
             </div>
           </section>
-        </Panel>
-        <Panel eyebrow="操作记录" title="最近活动">
+        </cp-panel>
+        <cp-panel eyebrow="操作记录" title="最近活动">
           <ul className="timeline">
             {logs.map((l, i) => (
               <li key={i} className="timeline-item"><strong>{l.action}</strong><div className="student-meta">{l.time} · {l.actor}</div></li>
             ))}
           </ul>
-        </Panel>
+        </cp-panel>
       </section>
-      <Panel eyebrow="权限范围" title="当前租户权限" actions={<Link className="text-button" to="/login">切换账号</Link>}>
+      <cp-panel eyebrow="权限范围" title="当前租户权限">
+        <Link slot="actions" className="text-button" to="/login">切换账号</Link>
         <div className="grid-3">
           {permissions.labels.map((l) => (
             <div key={l} className="module-card"><strong>{l}</strong><p>{user.role}角色已获得此业务权限。</p></div>
           ))}
         </div>
-      </Panel>
+      </cp-panel>
     </>
   );
 }

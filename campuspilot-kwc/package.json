@@ -11,13 +11,44 @@
     "react-scripts": "5.0.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "dev": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test"
+    "start": "craco start",
+    "dev": "craco start",
+    "build": "craco build",
+    "build:kwc": "node scripts/build-kwc-package.js",
+    "package:kwc": "npm run build:kwc",
+    "test": "craco test",
+    "deploy": "kd-custom-control-cli deploy"
+  },
+  "kwc": {
+    "modules": [
+      {
+        "name": "code",
+        "path": "src/modules/code"
+      }
+    ]
   },
   "browserslist": {
-    "production": [">0.2%", "not dead", "not op_mini all"],
-    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "eslintConfig": {
+    "ignorePatterns": [
+      "src/kwc/**",
+      "src/modules/**"
+    ]
+  },
+  "devDependencies": {
+    "@craco/craco": "^7.1.0",
+    "@kdcloudjs/kd-custom-control-cli": "^1.0.4",
+    "@kdcloudjs/kwc-compiler": "^1.0.0",
+    "@kdcloudjs/kwc-style-compiler": "^1.0.0"
   }
 }

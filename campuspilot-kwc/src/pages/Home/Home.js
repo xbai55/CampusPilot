@@ -33,6 +33,7 @@ export default function Home() {
             <Link to="/login">制定帮扶</Link>
             <Link to="/login">治理分析</Link>
           </div>
+          <Link className="public-start-button" to="/login">开启体验</Link>
         </div>
         <div className="public-carousel" aria-label="平台能力轮播">
           <div className="public-carousel-head">

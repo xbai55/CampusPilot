@@ -138,8 +138,80 @@ public final class InMemoryCampusPilotStore {
                         Json.object(Json.field("name", "风险预警单"), Json.field("code", "cp_risk_warning"), Json.field("status", "已闭环"), Json.intField("fields", 14)),
                         Json.object(Json.field("name", "帮扶反馈"), Json.field("code", "cp_support_feedback"), Json.field("status", "已闭环"), Json.intField("fields", 7))
                 ))),
-                Json.rawField("apis", Json.stringArray(List.of("POST /api/campuspilot/agent/chat", "POST /api/campuspilot/warnings/suggest", "POST /api/campuspilot/warnings/{code}/confirm", "POST /api/campuspilot/warnings/{code}/mentor-plan", "POST /api/campuspilot/warnings/{code}/feedback", "POST /api/campuspilot/warnings/{code}/close")))
+                Json.rawField("apis", Json.stringArray(List.of("POST /api/campuspilot/agent/chat", "POST /api/campuspilot/warnings/suggest", "POST /api/campuspilot/warnings/{code}/confirm", "POST /api/campuspilot/warnings/{code}/mentor-plan", "POST /api/campuspilot/warnings/{code}/feedback", "POST /api/campuspilot/warnings/{code}/close"))),
+                Json.rawField("thirdPartyApp", Json.object(Json.field("appId", "campuspilot_isv"), Json.field("auth", "AccessToken / API 授权 / IP 白名单"), Json.field("status", "待配置真实密钥")))
         );
+    }
+
+    public synchronized String lowcodeBlueprintJson() {
+        return Json.object(
+                Json.rawField("objects", Json.array(List.of(
+                        Json.object(Json.field("name", "学生画像"), Json.field("code", "cp_student_profile"), Json.field("type", "领域模型 + 表单"), Json.field("purpose", "承载学生基础信息、目标、学业表现、行为指标和风险标签。")),
+                        Json.object(Json.field("name", "课程成绩"), Json.field("code", "cp_course_score"), Json.field("type", "业务对象 + 列表报表"), Json.field("purpose", "为风险解释和导师帮扶提供课程证据。")),
+                        Json.object(Json.field("name", "学习行为"), Json.field("code", "cp_learning_behavior"), Json.field("type", "采集表单 + 异常规则"), Json.field("purpose", "记录出勤、作业、平台活跃和课堂互动。")),
+                        Json.object(Json.field("name", "风险预警单"), Json.field("code", "cp_risk_warning"), Json.field("type", "流程表单"), Json.field("purpose", "承载风险识别、确认、帮扶、反馈和结案。")),
+                        Json.object(Json.field("name", "风险处理日志"), Json.field("code", "cp_warning_log"), Json.field("type", "流程日志对象"), Json.field("purpose", "保留每次状态变更和处理说明，解决单状态字段无法追溯的问题。"))
+                ))),
+                Json.rawField("platformCapabilities", Json.array(List.of(
+                        Json.object(Json.field("name", "表单及插件开发"), Json.field("status", "已设计"), Json.field("detail", "预警单确认、导师计划、学生反馈和结案动作对应表单插件事件。")),
+                        Json.object(Json.field("name", "流程服务"), Json.field("status", "已设计"), Json.field("detail", "风险识别 -> 预警生成 -> 确认 -> 帮扶 -> 反馈 -> 复评结案。")),
+                        Json.object(Json.field("name", "报表"), Json.field("status", "已实现前端看板"), Json.field("detail", "风险分布、状态分布、趋势、专业对比和帮扶成效。")),
+                        Json.object(Json.field("name", "集成开发"), Json.field("status", "已预留"), Json.field("detail", "通过 CAMPUSPILOT_AGENT_API_URL 与金蝶 Agent API / OpenAPI 边界对接。"))
+                )))
+        );
+    }
+
+    public synchronized String agentWorkflowJson() {
+        return Json.object(
+                Json.field("agentName", "CampusPilot 学业成长助手"),
+                Json.field("modelRoute", "通过苍穹平台统一接入 DeepSeek / 豆包 / 通义千问等模型"),
+                Json.rawField("rag", Json.array(List.of(
+                        Json.object(Json.field("source", "学生画像知识库"), Json.field("content", "学生基础信息、成长目标、课程短板和风险规则。")),
+                        Json.object(Json.field("source", "帮扶政策知识库"), Json.field("content", "教育强国、拔尖创新人才培养、心理健康和学业帮扶政策摘要。")),
+                        Json.object(Json.field("source", "历史预警案例库"), Json.field("content", "预警单、处理轨迹、导师措施、学生反馈和结案结果。"))
+                ))),
+                Json.rawField("tools", Json.array(List.of(
+                        Json.object(Json.field("name", "query_student_profile"), Json.field("method", "GET /api/campuspilot/students"), Json.field("purpose", "查询学生画像并作为回答主证据。")),
+                        Json.object(Json.field("name", "query_warning_order"), Json.field("method", "GET /api/campuspilot/warnings"), Json.field("purpose", "查询已有预警单，避免重复建单。")),
+                        Json.object(Json.field("name", "create_warning_order"), Json.field("method", "POST /api/campuspilot/warnings/suggest"), Json.field("purpose", "生成结构化预警建议并进入待确认。")),
+                        Json.object(Json.field("name", "update_warning_status"), Json.field("method", "POST /api/campuspilot/warnings/{code}/{action}"), Json.field("purpose", "推进确认、导师计划、学生反馈和结案。"))
+                ))),
+                Json.rawField("workflow", Json.array(List.of(
+                        Json.object(Json.field("step", "理解问题"), Json.field("detail", "识别学生、角色、风险类型和期望输出。")),
+                        Json.object(Json.field("step", "检索知识库"), Json.field("detail", "RAG 拉取规则、政策和历史案例。")),
+                        Json.object(Json.field("step", "调用工具"), Json.field("detail", "查询画像、课程、行为、预警单等实时数据。")),
+                        Json.object(Json.field("step", "多步推理"), Json.field("detail", "综合 GPA、挂科、出勤、作业、目标和历史处理判断风险。")),
+                        Json.object(Json.field("step", "结构化输出"), Json.field("detail", "输出风险等级、依据、建议处理人、复评时间和预警单字段。"))
+                )))
+        );
+    }
+
+    public synchronized String reportCenterJson() {
+        return Json.array(List.of(
+                Json.object(Json.field("name", "学业风险驾驶舱"), Json.field("metric", "风险等级分布、预警状态、结案率"), Json.field("decision", "帮助学院管理者判断当前风险治理压力。")),
+                Json.object(Json.field("name", "学生画像报告"), Json.field("metric", "GPA、挂科、出勤、作业、科创参与度"), Json.field("decision", "帮助辅导员和导师定位学生主要短板。")),
+                Json.object(Json.field("name", "帮扶成效报表"), Json.field("metric", "处理周期、结案数、改善案例"), Json.field("decision", "验证帮扶措施是否真正产生改善。")),
+                Json.object(Json.field("name", "Agent 建议审计报表"), Json.field("metric", "建议来源、工具调用、人工确认结果"), Json.field("decision", "避免 AI 黑箱，便于答辩说明可控性。"))
+        ));
+    }
+
+    public synchronized String cloudNativeJson() {
+        return Json.array(List.of(
+                Json.object(Json.field("layer", "前端"), Json.field("unit", "campuspilot-kwc build 静态资源"), Json.field("deploy", "可由 Java 静态服务、Nginx 或对象存储托管。")),
+                Json.object(Json.field("layer", "业务服务"), Json.field("unit", "campuspilot-server Java 21 HTTP 服务"), Json.field("deploy", "无框架依赖，适合容器化和云主机部署。")),
+                Json.object(Json.field("layer", "数据层"), Json.field("unit", "PostgreSQL schema.sql / seed.sql"), Json.field("deploy", "当前内存数据可平滑迁移到 PostgreSQL。")),
+                Json.object(Json.field("layer", "Agent 集成"), Json.field("unit", "CAMPUSPILOT_AGENT_API_URL"), Json.field("deploy", "通过环境变量切换本地兜底与远程金蝶 Agent API。")),
+                Json.object(Json.field("layer", "可观测"), Json.field("unit", "health / audit-logs"), Json.field("deploy", "提供健康检查、操作审计和 Agent 模式响应头。"))
+        ));
+    }
+
+    public synchronized String multimodalJson() {
+        return Json.array(List.of(
+                Json.object(Json.field("input", "学生上传学习计划 PDF / 文档"), Json.field("model", "多模态/文档理解模型"), Json.field("output", "提取目标、困难和阶段计划，写入成长画像。"), Json.field("status", "接口预留")),
+                Json.object(Json.field("input", "课堂签到或活动图片"), Json.field("model", "视觉理解模型"), Json.field("output", "辅助识别出勤异常和活动参与证据。"), Json.field("status", "演示设计")),
+                Json.object(Json.field("input", "学生语音反馈"), Json.field("model", "语音识别 + 情感分析"), Json.field("output", "生成帮扶反馈摘要并提示辅导员复核。"), Json.field("status", "演示设计")),
+                Json.object(Json.field("input", "成绩单截图"), Json.field("model", "OCR + 结构化抽取"), Json.field("output", "提取课程成绩，触发风险规则或补强建议。"), Json.field("status", "后续增强"))
+        ));
     }
 
     public synchronized String agentInsightJson() {
@@ -246,6 +318,8 @@ public final class InMemoryCampusPilotStore {
         return Json.object(
                 Json.rawField("overview", overviewJson()),
                 Json.rawField("riskDistribution", riskDistributionJson()),
+                Json.rawField("agentWorkflow", agentWorkflowJson()),
+                Json.rawField("lowcodeBlueprint", lowcodeBlueprintJson()),
                 Json.intField("warningCount", warnings.size())
         );
     }

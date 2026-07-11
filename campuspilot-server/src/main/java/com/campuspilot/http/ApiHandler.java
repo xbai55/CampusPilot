@@ -74,6 +74,11 @@ public final class ApiHandler implements HttpHandler {
             case "/api/campuspilot/risk-trend" -> sendJson(exchange, 200, store.riskTrendJson());
             case "/api/campuspilot/effectiveness" -> sendJson(exchange, 200, store.effectivenessJson());
             case "/api/campuspilot/integration-status" -> sendJson(exchange, 200, store.integrationStatusJson());
+            case "/api/campuspilot/lowcode-blueprint" -> sendJson(exchange, 200, store.lowcodeBlueprintJson());
+            case "/api/campuspilot/agent-workflow" -> sendJson(exchange, 200, store.agentWorkflowJson());
+            case "/api/campuspilot/report-center" -> sendJson(exchange, 200, store.reportCenterJson());
+            case "/api/campuspilot/cloud-native" -> sendJson(exchange, 200, store.cloudNativeJson());
+            case "/api/campuspilot/multimodal" -> sendJson(exchange, 200, store.multimodalJson());
             case "/api/campuspilot/agent-insight" -> sendJson(exchange, 200, store.agentInsightJson());
             case "/api/campuspilot/roles" -> sendJson(exchange, 200, store.rolesJson());
             case "/api/campuspilot/audit-logs" -> sendJson(exchange, 200, store.auditLogsJson(user));

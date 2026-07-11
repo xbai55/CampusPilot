@@ -1,0 +1,1 @@
+:host{display:block}.row{display:flex;flex-direction:column;gap:6px}.meta{display:flex;align-items:center;justify-content:space-between;font-size:13px}.meta span{color:#1e2a3a}.meta strong{font-weight:700}.track{overflow:hidden;border-radius:999px;background:#edf2f7;height:8px}.fill{width:var(--width);height:100%;border-radius:inherit;background:var(--fill)}

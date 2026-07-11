@@ -58,3 +58,10 @@ skills-lock.json
 
 # Misc
 *.tmp
+
+# Local agent tooling
+.agents/
+
+# Accidental root package managers
+/package-lock.json
+/yarn.lock

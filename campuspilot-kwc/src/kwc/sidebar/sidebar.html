@@ -1,0 +1,18 @@
+<template>
+    <div class="brand" data-route="/home" onclick={handleClick}>
+        <span class="logo"><svg viewBox="0 0 32 32"><path d="M6 17.5 16 5l10 12.5-4.1 2.2L16 12.3l-5.9 7.4L6 17.5Z"></path><path d="M8.8 22.5 16 18l7.2 4.5L16 27 8.8 22.5Z"></path></svg></span>
+        <span><strong>启航智伴</strong><small>CampusPilot</small></span>
+    </div>
+    <nav class="nav">
+        <template for:each={navGroups} for:item="group">
+            <p key={group.label} class="group-label">{group.label}</p>
+            <template for:each={group.items} for:item="item">
+                <div key={item.route} class={item.itemClass} data-route={item.route} onclick={handleClick}>
+                    <svg viewBox="0 0 24 24"><path d={item.icon}></path></svg>
+                    <span>{item.label}</span>
+                </div>
+            </template>
+        </template>
+    </nav>
+    <div if:true={isAgentRoute} class="agent-ctx-btn" onclick={handleAgentContext}>助手上下文</div>
+</template>

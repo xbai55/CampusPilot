@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { scopeWarnings, canPerform } from "../../utils/permissions";
-import Panel from "../../components/Panel/Panel";
-import RiskPill from "../../components/RiskPill/RiskPill";
-import StatusPill from "../../components/StatusPill/StatusPill";
-import { showToast } from "../../components/Toast/Toast";
+import { showToast } from "../../utils/toast";
 
 export default function Warnings() {
   const { data, user, api, loadData } = useAuth();
@@ -73,11 +70,11 @@ export default function Warnings() {
   return (
     <>
       <section className="warning-workspace">
-        <Panel
+        <cp-panel
           eyebrow="预警单列表" title="按处理状态推进"
-          actions={canPerform("createWarningSuggestion") ? <button className="text-button" type="button" onClick={handleCreateWarning}>生成预警单</button> : <span className="role-pill">{user?.role}视图</span>}
           className="list-panel"
         >
+          {canPerform("createWarningSuggestion") ? <button slot="actions" className="text-button" type="button" onClick={handleCreateWarning}>生成预警单</button> : <span slot="actions" className="role-pill">{user?.role}视图</span>}
           <div className="table-wrap">
             <table className="data-table">
               <thead><tr><th>预警单</th><th>学生</th><th>风险等级</th><th>处理状态</th><th>建议处理人</th><th>复评时间</th></tr></thead>
@@ -86,8 +83,8 @@ export default function Warnings() {
                   <tr key={w.code} onClick={() => setSelectedIndex(i)} style={{ cursor: "pointer" }} className={i === selectedIndex ? "active-row" : ""}>
                     <td><strong>{w.code}</strong><br /><span className="student-meta">{w.title}</span></td>
                     <td>{w.student}</td>
-                    <td><RiskPill level={w.level} /></td>
-                    <td><StatusPill status={w.status} statusKey={w.statusKey} /></td>
+                    <td><cp-risk-pill level={w.level}></cp-risk-pill></td>
+                    <td><cp-status-pill status={w.status} status-key={w.statusKey}></cp-status-pill></td>
                     <td>{w.owner}</td>
                     <td>{w.reviewAt}</td>
                   </tr>
@@ -95,14 +92,14 @@ export default function Warnings() {
               </tbody>
             </table>
           </div>
-        </Panel>
+        </cp-panel>
 
         {selected ? (
-          <Panel className="detail-panel">
+          <cp-panel className="detail-panel">
             <div className="warning-detail-shell">
               <div className="entity-top">
                 <div><strong>{selected.title}</strong><div className="student-meta">{selected.code} · {selected.studentNo} · {selected.student}</div></div>
-                <StatusPill status={selected.status} statusKey={selected.statusKey} />
+                <cp-status-pill status={selected.status} status-key={selected.statusKey}></cp-status-pill>
               </div>
               <div className="evidence-strip compact">
                 {[["风险等级", selected.level], ["风险分数", selected.score], ["预警来源", selected.source], ["建议处理人", selected.owner], ["复评时间", selected.reviewAt]].map(([label, value]) => (
@@ -145,20 +142,21 @@ export default function Warnings() {
                 )}
               </div>
             </div>
-          </Panel>
+          </cp-panel>
         ) : (
-          <Panel className="detail-panel"><div className="agent-main"><strong>未找到匹配预警单</strong><p>请换用预警单号、学生姓名或状态继续检索。</p></div></Panel>
+          <cp-panel className="detail-panel"><div className="agent-main"><strong>未找到匹配预警单</strong><p>请换用预警单号、学生姓名或状态继续检索。</p></div></cp-panel>
         )}
       </section>
 
-      <Panel eyebrow="处理轨迹" title={`${selected ? selected.code : "预警单"} 操作日志`} actions={<a className="text-button" href="#/workflow">查看完整流程</a>}>
+      <cp-panel eyebrow="处理轨迹" title={`${selected ? selected.code : "预警单"} 操作日志`}>
+        <a className="text-button" href="#/workflow" slot="actions">查看完整流程</a>
         <ul className="timeline">
           {data.workflowLogs.filter((l) => l.code === selected?.code).map((l, i) => (
             <li key={i} className="timeline-item"><strong>{l.action}</strong><div className="student-meta">{l.time} · {l.actor}</div><p>{l.detail}</p></li>
           ))}
           {data.workflowLogs.filter((l) => l.code === selected?.code).length === 0 && <div className="empty-mini">该预警单暂无处理日志</div>}
         </ul>
-      </Panel>
+      </cp-panel>
     </>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { showToast } from "../../components/Toast/Toast";
+import { showToast } from "../../utils/toast";
 import { roleConfig } from "../../utils/permissions";
 
 const ROLES = [
