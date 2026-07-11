@@ -10,6 +10,13 @@ const WebpackBar = require('webpackbar')
 const serverConfig = require('../server/config.js')
 
 const { isvId, moduleId, schemaId, localServer } = serverConfig
+const stagingPath = path.join(
+  path.resolve(__dirname, '../server'),
+  'isv',
+  isvId,
+  moduleId,
+  schemaId
+)
 
 let metaXMLFile = path.resolve(__dirname, '../src/campuspilot.js-meta.kwc')
 if (!fs.existsSync(metaXMLFile)) {
@@ -21,6 +28,9 @@ if (localServer && (!isvId || !moduleId || !schemaId)) {
   console.error('配置文件 server/config.js 缺少必要的字段。')
   process.exit(1) // 退出进程
 }
+
+// Avoid deploying stale split chunks from a previous production build.
+fs.rmSync(stagingPath, { recursive: true, force: true })
 
 module.exports = merge(common, {
   mode: 'production',
@@ -62,13 +72,7 @@ module.exports = merge(common, {
         },
         {
           from: path.resolve(__dirname, '../dist'),
-          to: path.join(
-            path.resolve(__dirname, '../server'),
-            'isv',
-            isvId,
-            moduleId,
-            schemaId
-          ),
+          to: stagingPath,
           noErrorOnMissing: true,
         },
       ],

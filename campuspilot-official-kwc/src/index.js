@@ -4,8 +4,18 @@ import { createElement } from '@kdcloudjs/kwc';
 // 杩炴帴绗?
 const CONNECTOR = '__$$__';
 const ctxMap = new Map();
+const PUBLIC_PROPS = ['pageTitle', 'apiBase', 'defaultRole', 'enableAgent', 'theme'];
 
 const getInstanceId = (m) => `${m.pageId}${CONNECTOR}${m.key}`;
+
+function applyProps(element, props) {
+    const source = props && typeof props === 'object' ? (props.customProps || props) : {};
+    PUBLIC_PROPS.forEach((key) => {
+        if (source[key] !== undefined) {
+            element[key] = source[key];
+        }
+    });
+}
 
 (function (KDApi) {
     function MyComponent (model) {
@@ -19,7 +29,7 @@ const getInstanceId = (m) => `${m.pageId}${CONNECTOR}${m.key}`;
             this._isDestroyed = false; // 寮傛鍔犺浇瀹屾垚鍓嶅氨鍙兘琚攢姣?
         },
         init: function (props) {
-            const ctx = { model: this.model, props };
+            const ctx = { model: this.model, props, element: null };
             ctxMap.set(this.instanceId, ctx);
             const { dom } = this.model;
             // 寮傛鍔犺浇
@@ -27,12 +37,20 @@ const getInstanceId = (m) => `${m.pageId}${CONNECTOR}${m.key}`;
                 if (this._isDestroyed) { return; }
                 const elm = createElement('campuspilot-app', { is: App });
                 elm.instanceId = this.instanceId;
+                const current = ctxMap.get(this.instanceId);
+                if (current) {
+                    current.element = elm;
+                    applyProps(elm, current.props);
+                }
                 dom.appendChild(elm);
             });
         },
         update: function (props) {
             const ctx = ctxMap.get(this.instanceId);
-            if (ctx) { ctx.props = props; }
+            if (ctx) {
+                ctx.props = props;
+                applyProps(ctx.element, props);
+            }
         },
         handleDirective: function () {
             // 鍙傛暟锛歝ustomProps, methodname, args
@@ -40,6 +58,10 @@ const getInstanceId = (m) => `${m.pageId}${CONNECTOR}${m.key}`;
         },
         destoryed: function () {
             this._isDestroyed = true;
+            const ctx = ctxMap.get(this.instanceId);
+            if (ctx?.element) {
+                ctx.element.remove();
+            }
             ctxMap.delete(this.instanceId);
         }
         // 浠ヤ笅鐢熷懡鍛ㄦ湡鍦╒7.0.4+鐗堟湰鏀寔

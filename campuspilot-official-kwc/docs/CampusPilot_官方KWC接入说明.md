@@ -43,7 +43,7 @@ name = campuspilot
 | 属性 | 含义 |
 | --- | --- |
 | `pageTitle` | 顶部标题 |
-| `apiBase` | Java 后端 `/api/campuspilot` 基础地址 |
+| `apiBase` | Java 后端根地址；组件会自动追加 `/api/campuspilot` |
 | `defaultRole` | 默认角色视角 |
 | `enableAgent` | 是否通过后端调用远程 Agent |
 | `theme` | `light` 或 `dark` |
@@ -51,7 +51,7 @@ name = campuspilot
 示例：
 
 ```text
-apiBase = http://127.0.0.1:8787/api/campuspilot
+apiBase = http://127.0.0.1:8787
 defaultRole = counselor
 enableAgent = false
 ```
@@ -98,7 +98,7 @@ npx kd-custom-control-cli deploy -f
 
 ## 6. 安全边界
 
-前端 KWC 组件不保存平台应用密钥，也不直接拼接真实 Token。真实认证建议放在：
+前端 KWC 组件不保存平台应用密钥，也不直接拼接真实 Token。完整 CampusPilot 驾驶舱页面已迁入本官方项目的 `src/modules/campuspilot/app/`，可通过 `apiBase` 读取 Java 后端数据；真实认证建议放在：
 
 ```text
 金蝶平台配置

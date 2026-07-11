@@ -26,7 +26,7 @@
             <property
                 name="apiBase"
                 caption="业务接口地址"
-                description="Java 后端 /api/campuspilot 基础地址"
+                description="Java 后端根地址；组件会自动追加 /api/campuspilot 路径"
                 type="String"
                 length="120"
                 default="">
