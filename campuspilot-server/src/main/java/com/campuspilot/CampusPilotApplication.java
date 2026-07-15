@@ -22,7 +22,9 @@ public final class CampusPilotApplication {
         AgentClient agentClient = new AgentClient(config, store, kingdeeDataClient);
 
         HttpServer server = HttpServer.create(new InetSocketAddress(config.host(), config.port()), 0);
-        server.createContext("/api/campuspilot", new ApiHandler(config, store, agentClient, kingdeeDataClient));
+        ApiHandler apiHandler = new ApiHandler(config, store, agentClient, kingdeeDataClient);
+        server.createContext("/api/campuspilot", apiHandler);
+        server.createContext("/api/student", apiHandler);
         server.createContext("/", new StaticFileHandler(config.staticRoot()));
         server.setExecutor(Executors.newFixedThreadPool(config.workerThreads()));
         server.start();

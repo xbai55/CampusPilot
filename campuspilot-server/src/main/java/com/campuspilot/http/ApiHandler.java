@@ -2,7 +2,13 @@ package com.campuspilot.http;
 
 import com.campuspilot.config.AppConfig;
 import com.campuspilot.service.AgentClient;
+import com.campuspilot.service.GrowthPlanService;
 import com.campuspilot.service.KingdeeDataClient;
+import com.campuspilot.service.LearningService;
+import com.campuspilot.service.OpportunityService;
+import com.campuspilot.service.RiskService;
+import com.campuspilot.service.StudentProfileService;
+import com.campuspilot.service.StudentTrajectoryService;
 import com.campuspilot.store.InMemoryCampusPilotStore;
 import com.campuspilot.util.Json;
 import com.campuspilot.util.RequestUtil;
@@ -22,12 +28,23 @@ public final class ApiHandler implements HttpHandler {
     private final InMemoryCampusPilotStore store;
     private final AgentClient agentClient;
     private final KingdeeDataClient kingdeeDataClient;
+    private final StudentProfileService studentProfileService;
+    private final GrowthPlanService growthPlanService;
+    private final LearningService learningService;
+    private final RiskService riskService;
+    private final OpportunityService opportunityService;
 
     public ApiHandler(AppConfig config, InMemoryCampusPilotStore store, AgentClient agentClient, KingdeeDataClient kingdeeDataClient) {
         this.config = config;
         this.store = store;
         this.agentClient = agentClient;
         this.kingdeeDataClient = kingdeeDataClient;
+        StudentTrajectoryService trajectoryService = new StudentTrajectoryService(kingdeeDataClient.kingdeeClient());
+        this.studentProfileService = new StudentProfileService(kingdeeDataClient.kingdeeClient());
+        this.growthPlanService = new GrowthPlanService(kingdeeDataClient.kingdeeClient());
+        this.learningService = new LearningService(kingdeeDataClient.kingdeeClient(), trajectoryService);
+        this.riskService = new RiskService(kingdeeDataClient.kingdeeClient());
+        this.opportunityService = new OpportunityService(kingdeeDataClient.kingdeeClient());
     }
 
     @Override
@@ -63,6 +80,27 @@ public final class ApiHandler implements HttpHandler {
         }
         if (!user.authenticated()) {
             sendJson(exchange, 401, unauthorized());
+            return;
+        }
+        String studentId;
+        if ((studentId = studentId(path, "/api/student/profile/")) != null) {
+            sendJson(exchange, 200, studentProfileService.profileJson(studentId));
+            return;
+        }
+        if ((studentId = studentId(path, "/api/student/growth-plan/")) != null) {
+            sendJson(exchange, 200, growthPlanService.growthPlanJson(studentId));
+            return;
+        }
+        if ((studentId = studentId(path, "/api/student/learning/")) != null) {
+            sendJson(exchange, 200, learningService.learningJson(studentId));
+            return;
+        }
+        if ((studentId = studentId(path, "/api/student/risk-warning/")) != null) {
+            sendJson(exchange, 200, riskService.riskJson(studentId));
+            return;
+        }
+        if ((studentId = studentId(path, "/api/student/opportunities/")) != null) {
+            sendJson(exchange, 200, opportunityService.opportunitiesJson(studentId));
             return;
         }
         switch (path) {
@@ -138,6 +176,13 @@ public final class ApiHandler implements HttpHandler {
             return;
         }
         sendJson(exchange, 404, Json.object(Json.boolField("ok", false), Json.field("message", "not found")));
+    }
+
+    private static String studentId(String path, String prefix) {
+        if (!path.startsWith(prefix)) return null;
+        String value = path.substring(prefix.length());
+        if (value.isBlank() || value.contains("/")) return null;
+        return java.net.URLDecoder.decode(value, StandardCharsets.UTF_8);
     }
 
     private void sendJson(HttpExchange exchange, int status, String json) throws IOException {

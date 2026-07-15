@@ -128,7 +128,7 @@ public final class InMemoryCampusPilotStore {
 
     public synchronized String integrationStatusJson() {
         return Json.object(
-                Json.field("kingdeeBaseUrl", "http://10.0.160.250:8080/ierp"),
+                Json.field("kingdeeBaseUrl", config.kingdeeBaseUrl()),
                 Json.field("agentMode", config.agentApiUrl().isBlank() ? "本地 Agent 兜底，可通过环境变量切换金蝶 Agent API" : "金蝶 Agent API 远程代理"),
                 Json.field("agentApiUrl", config.agentApiUrl().isBlank() ? "未配置" : config.agentApiUrl()),
                 Json.rawField("objects", Json.array(List.of(

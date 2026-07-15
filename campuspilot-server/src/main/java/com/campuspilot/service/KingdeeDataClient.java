@@ -1,6 +1,7 @@
 package com.campuspilot.service;
 
 import com.campuspilot.config.AppConfig;
+import com.campuspilot.kingdee.KingdeeClient;
 import com.campuspilot.store.InMemoryCampusPilotStore;
 import com.campuspilot.util.Json;
 import com.campuspilot.util.RequestUtil.UserContext;
@@ -29,7 +30,7 @@ public final class KingdeeDataClient {
 
     private final AppConfig config;
     private final InMemoryCampusPilotStore store;
-    private final HttpClient httpClient;
+    private final KingdeeClient client;
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
     private volatile String lastError = "";
     private volatile long lastSuccessAt;
@@ -37,13 +38,11 @@ public final class KingdeeDataClient {
     public KingdeeDataClient(AppConfig config, InMemoryCampusPilotStore store) {
         this.config = config;
         this.store = store;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofMillis(config.kingdeeTimeoutMs()))
-                .build();
+        this.client = new KingdeeClient(config);
     }
 
     public boolean configured() {
-        return !config.kingdeeBaseUrl().isBlank() && !config.kingdeeAccessToken().isBlank();
+        return client.configured();
     }
 
     public String dataMode() {
@@ -136,21 +135,16 @@ public final class KingdeeDataClient {
         return names;
     }
 
+    public KingdeeClient kingdeeClient() {
+        return client;
+    }
+
     private List<Map<String, String>> queryRows(String path) {
         CacheEntry cached = cache.get(path);
         long now = System.currentTimeMillis();
         if (cached != null && now - cached.createdAt < CACHE_MILLIS) return cached.rows;
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(config.kingdeeBaseUrl() + path))
-                    .timeout(Duration.ofMillis(config.kingdeeTimeoutMs()))
-                    .header("Content-Type", "application/json")
-                    .header("accessToken", config.kingdeeAccessToken())
-                    .header("Idempotency-Key", UUID.randomUUID().toString())
-                    .GET().build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            if (response.statusCode() < 200 || response.statusCode() >= 300) throw new IllegalStateException("HTTP " + response.statusCode());
-            List<Map<String, String>> rows = parseRows(response.body());
+            List<Map<String, String>> rows = client.getRows(path);
             cache.put(path, new CacheEntry(now, rows));
             lastSuccessAt = now;
             lastError = "";
@@ -160,83 +154,6 @@ public final class KingdeeDataClient {
             return cached == null ? null : cached.rows;
         }
     }
-
-    private static List<Map<String, String>> parseRows(String json) {
-        int rowsKey = json == null ? -1 : json.indexOf("rows");
-        /* malformed line retained only inside this comment for a safe patch on Windows
-        int rowsKey = json == null ? -1 : json.indexOf("\rows\");
-        int start = rowsKey < 0 ? -1 : json.indexOf('[', rowsKey);
-        */
-        int start = rowsKey < 0 ? -1 : json.indexOf('[', rowsKey);
-        if (start < 0) throw new IllegalArgumentException("响应缺少 data.rows");
-        int end = matching(json, start, '[', ']');
-        List<Map<String, String>> rows = new ArrayList<>();
-        int cursor = start + 1;
-        while (cursor < end) {
-            int objectStart = json.indexOf('{', cursor);
-            if (objectStart < 0 || objectStart >= end) break;
-            int objectEnd = matching(json, objectStart, '{', '}');
-            rows.add(parseFlatObject(json.substring(objectStart + 1, objectEnd)));
-            cursor = objectEnd + 1;
-        }
-        return rows;
-    }
-
-    private static Map<String, String> parseFlatObject(String body) {
-        Map<String, String> values = new LinkedHashMap<>();
-        int i = 0;
-        while (i < body.length()) {
-            i = skip(body, i, " ,\r\n\t");
-            if (i >= body.length() || body.charAt(i) != '"') break;
-            Parsed key = quoted(body, i);
-            i = skip(body, key.next, " \r\n\t");
-            if (i >= body.length() || body.charAt(i) != ':') break;
-            i = skip(body, i + 1, " \r\n\t");
-            Parsed value;
-            if (i < body.length() && body.charAt(i) == '"') value = quoted(body, i);
-            else {
-                int next = i;
-                while (next < body.length() && body.charAt(next) != ',') next++;
-                value = new Parsed(body.substring(i, next).trim().replace("null", ""), next);
-            }
-            values.put(key.value, value.value);
-            i = value.next;
-        }
-        return values;
-    }
-
-    private static Parsed quoted(String text, int quoteAt) {
-        StringBuilder value = new StringBuilder();
-        boolean escaped = false;
-        for (int i = quoteAt + 1; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (escaped) {
-                value.append(switch (c) { case 'n' -> '\n'; case 'r' -> '\r'; case 't' -> '\t'; default -> c; });
-                escaped = false;
-            } else if (c == '\\') escaped = true;
-            else if (c == '"') return new Parsed(value.toString(), i + 1);
-            else value.append(c);
-        }
-        throw new IllegalArgumentException("JSON 字符串未闭合");
-    }
-
-    private static int matching(String text, int start, char open, char close) {
-        int depth = 0;
-        boolean inString = false;
-        boolean escaped = false;
-        for (int i = start; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (inString) {
-                if (escaped) escaped = false;
-                else if (c == '\\') escaped = true;
-                else if (c == '"') inString = false;
-            } else if (c == '"') inString = true;
-            else if (c == open) depth++;
-            else if (c == close && --depth == 0) return i;
-        }
-        throw new IllegalArgumentException("JSON 结构未闭合");
-    }
-
     // Mapping helpers are kept explicit so Kingdee field codes remain auditable.
     private String studentJson(Map<String, String> row) {
         String level = first(row, "code_risklevel", "code_currentstatus");
@@ -354,12 +271,6 @@ public final class KingdeeDataClient {
             if (value != null && !value.isBlank()) return value;
         }
         return "";
-    }
-
-    private static int skip(String text, int start, String chars) {
-        int i = start;
-        while (i < text.length() && chars.indexOf(text.charAt(i)) >= 0) i++;
-        return i;
     }
 
     private static String shortText(String value) {
