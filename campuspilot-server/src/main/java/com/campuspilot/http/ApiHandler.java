@@ -2,11 +2,14 @@ package com.campuspilot.http;
 
 import com.campuspilot.config.AppConfig;
 import com.campuspilot.service.AgentClient;
+import com.campuspilot.service.CourseAbilityService;
 import com.campuspilot.service.GrowthPlanService;
 import com.campuspilot.service.KingdeeDataClient;
 import com.campuspilot.service.LearningService;
+import com.campuspilot.service.NotificationService;
 import com.campuspilot.service.OpportunityService;
 import com.campuspilot.service.RiskService;
+import com.campuspilot.service.StudyCheckinService;
 import com.campuspilot.service.StudentProfileService;
 import com.campuspilot.service.StudentTrajectoryService;
 import com.campuspilot.store.InMemoryCampusPilotStore;
@@ -33,6 +36,9 @@ public final class ApiHandler implements HttpHandler {
     private final LearningService learningService;
     private final RiskService riskService;
     private final OpportunityService opportunityService;
+    private final NotificationService notificationService;
+    private final StudyCheckinService studyCheckinService;
+    private final CourseAbilityService courseAbilityService;
 
     public ApiHandler(AppConfig config, InMemoryCampusPilotStore store, AgentClient agentClient, KingdeeDataClient kingdeeDataClient) {
         this.config = config;
@@ -45,6 +51,9 @@ public final class ApiHandler implements HttpHandler {
         this.learningService = new LearningService(kingdeeDataClient.kingdeeClient(), trajectoryService);
         this.riskService = new RiskService(kingdeeDataClient.kingdeeClient());
         this.opportunityService = new OpportunityService(kingdeeDataClient.kingdeeClient());
+        this.notificationService = new NotificationService(kingdeeDataClient.kingdeeClient());
+        this.studyCheckinService = new StudyCheckinService(kingdeeDataClient.kingdeeClient());
+        this.courseAbilityService = new CourseAbilityService(kingdeeDataClient.kingdeeClient());
     }
 
     @Override
@@ -101,6 +110,18 @@ public final class ApiHandler implements HttpHandler {
         }
         if ((studentId = studentId(path, "/api/student/opportunities/")) != null) {
             sendJson(exchange, 200, opportunityService.opportunitiesJson(studentId));
+            return;
+        }
+        if ((studentId = studentId(path, "/api/student/notifications/")) != null) {
+            sendJson(exchange, 200, notificationService.notificationsJson(studentId));
+            return;
+        }
+        if ((studentId = studentId(path, "/api/student/study-checkins/")) != null) {
+            sendJson(exchange, 200, studyCheckinService.checkinsJson(studentId));
+            return;
+        }
+        if ("/api/student/course-ability-mappings".equals(path)) {
+            sendJson(exchange, 200, courseAbilityService.mappingsJson());
             return;
         }
         switch (path) {

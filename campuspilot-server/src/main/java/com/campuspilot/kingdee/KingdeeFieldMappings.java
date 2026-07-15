@@ -67,7 +67,16 @@ public final class KingdeeFieldMappings {
                 "opportunitytype_title", "opportunityTypeTitle", "status_title", "statusTitle",
                 "suitablemajor_title", "suitableMajorTitle", "course_name", "courseName",
                 "course_type", "courseType", "credit", "credit", "score", "score",
-                "is_core_course", "coreCourse", "is_failed", "failed", "course_direction", "courseDirection");
+                "is_core_course", "coreCourse", "is_failed", "failed", "course_direction", "courseDirection",
+                "receiver", "receiver", "receiverrole", "receiverRole", "relatedbill", "relatedBill",
+                "remindertype", "reminderType", "content", "content", "remindertime", "reminderTime",
+                "processstatus", "processStatus", "processresult", "processResult", "notinumber", "notificationNumber",
+                "warningnumber", "warningNumber", "checkindate", "checkinDate", "studycontent", "studyContent",
+                "taskresult", "taskResult", "assignmentstatus", "assignmentStatus", "selfevaluation", "selfEvaluation",
+                "tutorcomment", "tutorComment", "counselorremark", "counselorRemark",
+                "abilitydimension", "abilityDimension", "importance", "importance", "triggertag", "triggerTag",
+                "improvement", "improvementSuggestion", "projecttype", "projectType", "reflectnumber", "mappingNumber",
+                "relatedcareer", "relatedCareer", "relatedcareer_title", "relatedCareerTitle");
         return Map.copyOf(map);
     }
 

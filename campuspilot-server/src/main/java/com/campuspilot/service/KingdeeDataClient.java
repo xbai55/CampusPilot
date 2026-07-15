@@ -2,22 +2,16 @@ package com.campuspilot.service;
 
 import com.campuspilot.config.AppConfig;
 import com.campuspilot.kingdee.KingdeeClient;
+import com.campuspilot.kingdee.KingdeeFieldMappings;
 import com.campuspilot.store.InMemoryCampusPilotStore;
 import com.campuspilot.util.Json;
 import com.campuspilot.util.RequestUtil.UserContext;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Server-side adapter for CampusPilot business-object APIs published by Kingdee AI Cangqiong. */
@@ -26,6 +20,15 @@ public final class KingdeeDataClient {
     private static final String COURSE = "/kapi/v2/code/code_campus_pilot/code_cp_course_score/cp_course_score_query";
     private static final String BEHAVIOR = "/kapi/v2/code/code_campus_pilot/code_cp_learning_behavior/cp_learning_behavior_query";
     private static final String WARNING = "/kapi/v2/code/code_campus_pilot/code_cp_risk_warning/cp_risk_warning_query";
+    private static final String GROWTH_PLAN = "/kapi/v2/code/code_campus_pilot/code_growthplan/growthplan";
+    private static final String TRAJECTORY = "/kapi/v2/code/code_campus_pilot/code_studenttrajectory/student_trajectory_query";
+    private static final String MULTI_BEHAVIOR = "/kapi/v2/code/code_campus_pilot/code_stumultibehaviorrec/stumultibehaviorrec";
+    private static final String OPPORTUNITY = "/kapi/v2/code/code_campus_pilot/code_studentopprec/studentopprec";
+    private static final String OPPORTUNITY_LIBRARY = "/kapi/v2/code/code_campus_pilot/code_growthopportunity/growthopportunity";
+    private static final String CLASSROOM = "/kapi/v2/code/code_campus_pilot/code_classlearningrec/classlearningrec";
+    private static final String NOTIFICATION = "/kapi/v2/code/code_campus_pilot/code_notificationrecord/notificationrecord";
+    private static final String STUDY_CHECKIN = "/kapi/v2/code/code_campus_pilot/code_studycheckinrec/studycheckinrec";
+    private static final String COURSE_ABILITY = "/kapi/v2/code/code_campus_pilot/code_courseabilitymap/courseabilitymap";
     private static final long CACHE_MILLIS = 30_000L;
 
     private final AppConfig config;
@@ -94,6 +97,15 @@ public final class KingdeeDataClient {
                 Json.rawField("courses", coursesJson(system)),
                 Json.rawField("behaviors", behaviorsJson(system)),
                 Json.rawField("warnings", warningsJson(system)),
+                Json.rawField("growthPlans", mappedRowsJson(GROWTH_PLAN)),
+                Json.rawField("trajectories", mappedRowsJson(TRAJECTORY)),
+                Json.rawField("multiDimensionalBehaviors", mappedRowsJson(MULTI_BEHAVIOR)),
+                Json.rawField("opportunityRecommendations", mappedRowsJson(OPPORTUNITY)),
+                Json.rawField("opportunityLibrary", mappedRowsJson(OPPORTUNITY_LIBRARY)),
+                Json.rawField("classroomLearning", mappedRowsJson(CLASSROOM)),
+                Json.rawField("notifications", mappedRowsJson(NOTIFICATION)),
+                Json.rawField("studyCheckins", mappedRowsJson(STUDY_CHECKIN)),
+                Json.rawField("courseAbilityMappings", mappedRowsJson(COURSE_ABILITY)),
                 Json.field("dataSource", "Kingdee AI Cangqiong business objects")
         );
     }
@@ -118,14 +130,33 @@ public final class KingdeeDataClient {
                         objectStatus("学生画像", "cp_student_profile", 28, PROFILE),
                         objectStatus("课程成绩", "cp_course_score", 20, COURSE),
                         objectStatus("学习行为", "cp_learning_behavior", 18, BEHAVIOR),
-                        objectStatus("风险预警单", "cp_risk_warning", 27, WARNING)
+                        objectStatus("风险预警单", "cp_risk_warning", 27, WARNING),
+                        objectStatus("成长计划", "growthplan", 27, GROWTH_PLAN),
+                        objectStatus("成长轨迹", "studenttrajectory", 27, TRAJECTORY),
+                        objectStatus("多维行为", "stumultibehaviorrec", 26, MULTI_BEHAVIOR),
+                        objectStatus("机会推荐", "studentopprec", 25, OPPORTUNITY),
+                        objectStatus("成长机会库", "growthopportunity", 28, OPPORTUNITY_LIBRARY),
+                        objectStatus("课堂学情", "classlearningrec", 24, CLASSROOM),
+                        objectStatus("通知提醒", "notificationrecord", 23, NOTIFICATION),
+                        objectStatus("学习打卡", "studycheckinrec", 24, STUDY_CHECKIN),
+                        objectStatus("课程能力映射", "courseabilitymap", 21, COURSE_ABILITY)
                 ))),
                 Json.rawField("apis", Json.stringArray(List.of(
                         "GET /api/campuspilot/students", "GET /api/campuspilot/courses",
                         "GET /api/campuspilot/behaviors", "GET /api/campuspilot/warnings",
+                        "GET /api/student/profile/{student_id}", "GET /api/student/growth-plan/{student_id}",
+                        "GET /api/student/learning/{student_id}", "GET /api/student/risk-warning/{student_id}",
+                        "GET /api/student/opportunities/{student_id}", "GET /api/student/notifications/{student_id}",
+                        "GET /api/student/study-checkins/{student_id}", "GET /api/student/course-ability-mappings",
                         "POST /api/campuspilot/agent/chat"
                 )))
         );
+    }
+
+    private String mappedRowsJson(String path) {
+        List<Map<String, String>> rows = queryRows(path);
+        if (rows == null) return "[]";
+        return Json.array(rows.stream().map(KingdeeFieldMappings::toJson).toList());
     }
 
     private Map<String, String> profileNames() {
@@ -279,5 +310,4 @@ public final class KingdeeDataClient {
     }
 
     private record CacheEntry(long createdAt, List<Map<String, String>> rows) {}
-    private record Parsed(String value, int next) {}
 }

@@ -51,9 +51,9 @@ src/main/java/com/campuspilot/
 | 风险预警 | cp_risk_warning_query | 风险识别、建议与处置记录 | 已接入 |
 | 学生机会推荐 | studentopprec | 个性化机会匹配 | 已接入 |
 | 成长机会库 | growthopportunity | 可推荐机会基础库 | 已接入 |
-| 通知提醒 | notificationrecord | 消息提醒记录 | 文档已核对，暂未开放业务路由 |
-| 学习打卡 | studycheckinrec | 帮扶后的学习打卡 | 文档已核对，暂未开放业务路由 |
-| 课程能力映射 | courseabilitymap | 课程与能力维度映射 | 文档已核对，暂未开放业务路由 |
+| 通知提醒 | notificationrecord | 消息提醒记录 | 已接入 |
+| 学习打卡 | studycheckinrec | 帮扶后的学习打卡 | 已接入 |
+| 课程能力映射 | courseabilitymap | 课程与能力维度映射 | 已接入 |
 
 ## REST API
 
@@ -66,6 +66,9 @@ src/main/java/com/campuspilot/
 | GET | /api/student/learning/{student_id} | 学习行为、成长轨迹、多维行为和课堂学情 |
 | GET | /api/student/risk-warning/{student_id} | 风险预警 |
 | GET | /api/student/opportunities/{student_id} | 个性化推荐与机会库 |
+| GET | /api/student/notifications/{student_id} | 通知提醒记录 |
+| GET | /api/student/study-checkins/{student_id} | 学习打卡记录 |
+| GET | /api/student/course-ability-mappings | 全部课程能力映射 |
 
 这些接口沿用现有登录鉴权。请求时需携带 X-CampusPilot-User 和 X-CampusPilot-Role-Key。
 
@@ -129,7 +132,7 @@ cd campuspilot-server
 .\scripts\test.ps1
 ~~~
 
-测试使用本地模拟 KAPI，覆盖 Token 获取、Token 失效重试、成功响应、空数据、学生画像/风险/成长计划字段映射和网络异常，不需要真实金蝶账号。
+测试使用本地模拟 KAPI，覆盖 Token 获取、Token 失效重试、成功响应、空数据、全部 13 个 KAPI 的关键字段映射和网络异常，不需要真实金蝶账号。
 
 ## 失败回退
 
