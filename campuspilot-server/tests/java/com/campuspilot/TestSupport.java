@@ -18,12 +18,20 @@ final class TestSupport {
 
     static AppConfig config(String baseUrl, String staticToken, boolean credentials,
                             String agentUrl, String workflowUrl, String bearerToken, String allowedOrigins) {
-        return new AppConfig("127.0.0.1", 0, Path.of("."), agentUrl, "agent-secret", 1000,
-                baseUrl, staticToken,
+        return config(baseUrl, staticToken, credentials, agentUrl, workflowUrl, bearerToken,
+                allowedOrigins, "http://127.0.0.1:8787", "", "callback-test", 3000);
+    }
+
+    static AppConfig config(String baseUrl, String staticToken, boolean credentials,
+                            String agentUrl, String workflowUrl, String bearerToken, String allowedOrigins,
+                            String publicBaseUrl, String assistantId, String callbackToken, int responseWaitMs) {
+        return new AppConfig("127.0.0.1", 0, Path.of("."), baseUrl, staticToken,
                 credentials ? "client" : "", credentials ? "secret" : "",
                 credentials ? "user" : "", credentials ? "account" : "",
                 "zh_CN", 1000, 1,
-                allowedOrigins, bearerToken, workflowUrl, "workflow-secret", 1000);
+                allowedOrigins, bearerToken, workflowUrl, "workflow-secret", 1000,
+                publicBaseUrl, "CampusPilot 启航智伴学业成长助手", assistantId,
+                callbackToken, responseWaitMs);
     }
 
     static HttpServer server() throws IOException {

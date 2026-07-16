@@ -63,6 +63,17 @@ public final class KingdeeClient {
         return parseRows(response.body());
     }
 
+    public String postOpenApiJson(String endpoint, String jsonBody) {
+        if (!configured()) throw new KingdeeException("Kingdee OpenAPI is not configured");
+        HttpResponse<String> response = sendPost(endpoint, jsonBody, token(false));
+        if (isAuthFailure(response) && config.hasKingdeeCredentials()) {
+            invalidateToken();
+            response = sendPost(endpoint, jsonBody, token(true));
+        }
+        requireSuccess(response);
+        return response.body() == null ? "" : response.body();
+    }
+
     private HttpResponse<String> sendGet(String endpoint, String token) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
@@ -78,6 +89,24 @@ public final class KingdeeClient {
         } catch (Exception ex) {
             LOG.log(Level.WARNING, "Kingdee KAPI network error for " + endpoint, ex);
             throw new KingdeeException("Kingdee KAPI network error: " + safeMessage(ex), ex);
+        }
+    }
+
+    private HttpResponse<String> sendPost(String endpoint, String jsonBody, String token) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(resolveOpenApiUri(endpoint))
+                    .timeout(Duration.ofMillis(config.kingdeeTimeoutMs()))
+                    .header("Content-Type", "application/json; charset=utf-8")
+                    .header("accessToken", token)
+                    .header("Idempotency-Key", UUID.randomUUID().toString())
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody == null ? "{}" : jsonBody, StandardCharsets.UTF_8))
+                    .build();
+            LOG.fine(() -> "Kingdee OpenAPI POST " + request.uri().getPath());
+            return httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        } catch (Exception ex) {
+            LOG.log(Level.WARNING, "Kingdee OpenAPI network error for " + endpoint, ex);
+            throw new KingdeeException("Kingdee OpenAPI network error: " + safeMessage(ex), ex);
         }
     }
 
@@ -137,12 +166,18 @@ public final class KingdeeClient {
         if ("false".equalsIgnoreCase(status)) {
             throw new KingdeeException("Kingdee " + stringValue(body, "errorCode") + ": " + stringValue(body, "message"));
         }
+        String errorCode = stringValue(body, "errorCode");
+        if (errorCode.isBlank()) errorCode = stringValue(body, "errCode");
+        if (!errorCode.isBlank() && !"0".equals(errorCode)) {
+            throw new KingdeeException("Kingdee " + errorCode + ": " + stringValue(body, "message"));
+        }
     }
 
     private boolean isAuthFailure(HttpResponse<String> response) {
         if (response.statusCode() == 401 || response.statusCode() == 403) return true;
         String body = response.body() == null ? "" : response.body();
         String code = stringValue(body, "errorCode");
+        if (code.isBlank()) code = stringValue(body, "errCode");
         String message = stringValue(body, "message").toLowerCase();
         return ("401".equals(code) || "612".equals(code))
                 || message.contains("token") && (message.contains("expired") || message.contains("失效") || message.contains("过期"));
@@ -167,10 +202,34 @@ public final class KingdeeClient {
         return URI.create(base + (endpoint.startsWith("/") ? endpoint : "/" + endpoint));
     }
 
+    private URI resolveOpenApiUri(String endpoint) {
+        String base = config.kingdeeBaseUrl();
+        String path = endpoint.startsWith("/") ? endpoint : "/" + endpoint;
+        if (base.endsWith("/ierp")) base = base.substring(0, base.length() - "/ierp".length());
+        return URI.create(base + path);
+    }
+
     public static List<Map<String, String>> parseRows(String json) {
         int rowsKey = json == null ? -1 : json.indexOf("\"rows\"");
         int start = rowsKey < 0 ? -1 : json.indexOf('[', rowsKey);
         if (start < 0) throw new KingdeeException("Kingdee response is missing data.rows");
+        int end = matching(json, start, '[', ']');
+        List<Map<String, String>> rows = new ArrayList<>();
+        int cursor = start + 1;
+        while (cursor < end) {
+            int objectStart = json.indexOf('{', cursor);
+            if (objectStart < 0 || objectStart >= end) break;
+            int objectEnd = matching(json, objectStart, '{', '}');
+            rows.add(parseFlatObject(json.substring(objectStart + 1, objectEnd)));
+            cursor = objectEnd + 1;
+        }
+        return rows;
+    }
+
+    public static List<Map<String, String>> parseObjectArray(String json, String key) {
+        int keyAt = json == null ? -1 : json.indexOf(Json.quote(key));
+        int start = keyAt < 0 ? -1 : json.indexOf('[', keyAt);
+        if (start < 0) throw new KingdeeException("Kingdee response is missing " + key + " array");
         int end = matching(json, start, '[', ']');
         List<Map<String, String>> rows = new ArrayList<>();
         int cursor = start + 1;
@@ -211,6 +270,10 @@ public final class KingdeeClient {
     static String stringValue(String json, String key) {
         String value = rawValue(json, key);
         return value == null ? "" : value;
+    }
+
+    public static String jsonString(String json, String key) {
+        return stringValue(json, key);
     }
 
     private static long longValue(String json, String key, long fallback) {

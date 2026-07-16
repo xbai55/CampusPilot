@@ -268,7 +268,7 @@ AI 算法工程师方向应该补哪些课程？
 已经完成：
 
 ```Plain Text
-CampusPilot 学业成长助手
+CampusPilot 启航智伴学业成长助手
 ```
 
 当前 Agent 能围绕知识库回答：
@@ -409,7 +409,7 @@ AI建议
 课程成绩样例数据
 学习行为样例数据
 知识库演示数据
-CampusPilot 学业成长助手 Agent
+CampusPilot 启航智伴学业成长助手 Agent
 风险预警单业务对象
 两条风险预警单数据
 Agent 基于知识库解释风险

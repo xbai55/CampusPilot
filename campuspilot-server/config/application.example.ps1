@@ -16,12 +16,17 @@ $env:KINGDEE_ACCOUNT_ID = ''
 $env:KINGDEE_LANGUAGE = 'zh_CN'
 $env:KINGDEE_TIMEOUT = '8000'
 
-# 金蝶 Agent 对话接口。
-$env:CAMPUSPILOT_AGENT_API_URL = ''
-$env:CAMPUSPILOT_AGENT_API_KEY = ''
-$env:CAMPUSPILOT_AGENT_TIMEOUT_MS = '8000'
+# Agent 使用同一套金蝶 OpenAPI 凭据，后端自动获取 accessToken、查找助手并创建会话。
+# PUBLIC_BASE_URL 必须是金蝶平台能够回调到的后端公网地址，不能填写 127.0.0.1。
+$env:CAMPUSPILOT_PUBLIC_BASE_URL = 'https://campuspilot.example.com'
+$env:CAMPUSPILOT_AGENT_NAME = 'CampusPilot 启航智伴学业成长助手'
+# 可选：已知助手 ID 时填写，可跳过助手清单查询。
+$env:CAMPUSPILOT_AGENT_ASSISTANT_ID = ''
+# 可选：留空时每次启动自动生成；多实例部署时应配置相同的随机长字符串。
+$env:CAMPUSPILOT_AGENT_CALLBACK_TOKEN = ''
+$env:CAMPUSPILOT_AGENT_RESPONSE_WAIT_MS = '30000'
 
-# 金蝶 Agent/任务流统一入口。为空时沿用 Agent URL/Key。
+# 独立的写操作/任务流入口；与 Agent OpenAPI 不共用地址或 Key。
 $env:CAMPUSPILOT_WORKFLOW_API_URL = ''
 $env:CAMPUSPILOT_WORKFLOW_API_KEY = ''
 $env:CAMPUSPILOT_WORKFLOW_TIMEOUT_MS = '12000'

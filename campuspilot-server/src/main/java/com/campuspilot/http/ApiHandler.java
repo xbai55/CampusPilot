@@ -33,6 +33,7 @@ public final class ApiHandler implements HttpHandler {
     private static final Pattern WARNING_ACTION = Pattern.compile("^/api/campuspilot/warnings/([^/]+)/(confirm|mentor-plan|feedback|close)$");
     private static final Pattern STUDENT_EXTENSION = Pattern.compile("^/api/campuspilot/students/([^/]+)/(trajectory|profile-analysis|opportunities)$");
     private static final Pattern TASK_ACTION = Pattern.compile("^/api/campuspilot/tasks/([^/]+)$");
+    private static final Pattern AGENT_RESULT = Pattern.compile("^/api/campuspilot/agent/results/([^/]+)$");
 
     private final AppConfig config;
     private final InMemoryCampusPilotStore store;
@@ -117,6 +118,11 @@ public final class ApiHandler implements HttpHandler {
             return;
         }
         if (!authorize(exchange, user)) return;
+        Matcher agentResult = AGENT_RESULT.matcher(path);
+        if (agentResult.matches()) {
+            sendJson(exchange, 200, agentClient.resultJson(java.net.URLDecoder.decode(agentResult.group(1), StandardCharsets.UTF_8)));
+            return;
+        }
         String studentId;
         if ((studentId = studentId(path, "/api/student/profile/")) != null) {
             sendJson(exchange, 200, studentProfileService.profileJson(studentId));
@@ -196,6 +202,13 @@ public final class ApiHandler implements HttpHandler {
     }
 
     private void handlePost(HttpExchange exchange, String path, String body, UserContext user) throws IOException {
+        if ("/api/campuspilot/agent/callback".equals(path)) {
+            String token = exchange.getRequestHeaders().getFirst("access_token");
+            if (token == null || token.isBlank()) token = RequestUtil.queryValue(exchange, "token", "");
+            String response = agentClient.callbackJson(body, token);
+            sendJson(exchange, response.contains("invalid callback token") ? 401 : 200, response);
+            return;
+        }
         if ("/api/campuspilot/auth/login".equals(path)) {
             sendJson(exchange, 200, store.loginJson(body));
             return;
@@ -207,7 +220,7 @@ public final class ApiHandler implements HttpHandler {
         if (!authorize(exchange, user)) return;
         if ("/api/campuspilot/agent/chat".equals(path)) {
             String question = RequestUtil.value(body, "question", "");
-            sendJson(exchange, 200, agentClient.chat(question, user.role()));
+            sendJson(exchange, 200, agentClient.chat(question, user.name(), user.role()));
             return;
         }
         if ("/api/campuspilot/plans/generate".equals(path)) {
@@ -291,7 +304,7 @@ public final class ApiHandler implements HttpHandler {
                 Json.field("time", RequestUtil.now()),
                 Json.rawField("configuration", Json.object(
                         Json.boolField("kingdeeConfigured", kingdeeDataClient.configured()),
-                        Json.boolField("agentConfigured", !config.agentApiUrl().isBlank()),
+                        Json.boolField("agentConfigured", config.agentOpenApiConfigured()),
                         Json.boolField("workflowConfigured", config.workflowConfigured()),
                         Json.boolField("bearerProtectionEnabled", config.requiresBearerToken()),
                         Json.field("corsAllowedOrigins", config.corsAllowedOrigins())
@@ -330,7 +343,7 @@ public final class ApiHandler implements HttpHandler {
         exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CampusPilot-User, X-CampusPilot-Role-Key");
         exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
         exchange.getResponseHeaders().set("Vary", "Origin");
-        exchange.getResponseHeaders().set("X-CampusPilot-Agent-Mode", config.agentApiUrl().isBlank() ? "local-fallback" : "remote-proxy");
+        exchange.getResponseHeaders().set("X-CampusPilot-Agent-Mode", config.agentOpenApiConfigured() ? "openapi-auto" : "local-fallback");
         exchange.getResponseHeaders().set("X-CampusPilot-Data-Mode", kingdeeDataClient.dataMode());
         if (status == 204) {
             exchange.sendResponseHeaders(status, -1);

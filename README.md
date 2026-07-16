@@ -95,11 +95,13 @@ python server.py
 | `CAMPUSPILOT_STATIC_ROOT` | 静态文件目录 | `../campuspilot-home` |
 | `CAMPUSPILOT_CORS_ALLOWED_ORIGINS` | 允许的前端来源，多个值用英文逗号分隔 | `http://127.0.0.1:8881` |
 | `CAMPUSPILOT_API_BEARER_TOKEN` | 可选的后端预设 Bearer Token | 空 |
-| `CAMPUSPILOT_AGENT_API_URL` | 金蝶苍穹 Agent API 地址 | 空（本地兜底） |
-| `CAMPUSPILOT_AGENT_API_KEY` | 金蝶 Agent API 密钥 | 空 |
-| `CAMPUSPILOT_AGENT_TIMEOUT_MS` | Agent 调用超时(ms) | `8000` |
-| `CAMPUSPILOT_WORKFLOW_API_URL` | 金蝶 Agent/任务流统一入口；为空时沿用 Agent URL | 空 |
-| `CAMPUSPILOT_WORKFLOW_API_KEY` | 任务流 API Key；为空时沿用 Agent Key | 空 |
+| `CAMPUSPILOT_PUBLIC_BASE_URL` | 金蝶可访问的后端公网地址，用于 Agent 回调 | `http://127.0.0.1:8787`（仅本机开发） |
+| `CAMPUSPILOT_AGENT_NAME` | 自动查找的助手名称 | `CampusPilot 启航智伴学业成长助手` |
+| `CAMPUSPILOT_AGENT_ASSISTANT_ID` | 可选助手 ID；填写后跳过名称查找 | 空 |
+| `CAMPUSPILOT_AGENT_CALLBACK_TOKEN` | 可选回调校验 Token；留空则启动时自动生成 | 空 |
+| `CAMPUSPILOT_AGENT_RESPONSE_WAIT_MS` | 同步等待 Agent 回调的时间(ms) | `30000` |
+| `CAMPUSPILOT_WORKFLOW_API_URL` | 独立的写操作/任务流入口 | 空 |
+| `CAMPUSPILOT_WORKFLOW_API_KEY` | 独立的任务流 API Key | 空 |
 | `KINGDEE_BASE_URL` | 金蝶苍穹平台或 `/ierp` 基础地址 | `http://127.0.0.1:8881` |
 | `KINGDEE_ACCESS_TOKEN` | 可选固定业务对象 accessToken | 空 |
 | `KINGDEE_CLIENT_ID` | 增强型 Token 第三方应用编码 | 空 |
@@ -112,7 +114,16 @@ python server.py
 固定 `KINGDEE_ACCESS_TOKEN` 与增强型 Token 凭据二选一。旧的
 `CAMPUSPILOT_KINGDEE_*` 变量仍兼容，但新部署优先使用上表变量。
 
-> 不配置 `CAMPUSPILOT_AGENT_API_URL` 时，Agent 问答使用明确标记的本地演示兜底。
+Agent 不需要单独配置地址或 Key。后端通过 `KINGDEE_BASE_URL` 和 OpenAPI 凭据自动执行：
+
+```text
+POST 获取 accessToken → POST /v2/gai/assistants 按名称找助手
+→ POST /v2/gai/newsession 创建并缓存会话
+→ POST /v2/gai/chat → 后端 callback 接收回答
+```
+
+例如，用户问“分析张明远的风险”时，浏览器只请求 CampusPilot 后端；`client_secret`、
+`accessToken` 和回调 Token 都不会下发到前端。若未配置金蝶凭据，Agent 问答使用明确标记的本地演示兜底。
 >
 > 不配置金蝶凭据时，读取接口会标记 `local-fallback` 或 `unavailable`；未配置任务流时，写接口返回 HTTP 503，不会修改内存并伪装成平台写回。Token、Secret 和 API Key 只能配置在 Java 后端。
 

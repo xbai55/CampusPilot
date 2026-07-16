@@ -84,8 +84,9 @@
 | 参数名 | 类型 | 说明 |
 |---|---|---|
 | kingdeeBaseUrl | String | 金蝶苍穹平台基础地址 |
-| agentMode | String | 当前 Agent 运行模式（远程代理 / 本地兜底） |
-| agentApiUrl | String | 金蝶 Agent API 完整地址（未配置则显示"未配置"） |
+| agentMode | String | 当前 Agent 运行模式（OpenAPI 自动发现 / 本地兜底） |
+| agentName | String | 自动匹配的助手名称 |
+| agentApi | String | 从 `KINGDEE_BASE_URL` 自动派生的 `/v2/gai/*` 接口 |
 | objects | Object[] | 已建模的业务对象列表 |
 | apis | String[] | 已开放的操作 API 路径列表 |
 
@@ -132,26 +133,27 @@
 
 ---
 
-## 二、后端 → 金蝶苍穹 Agent API 远程调用
+## 二、后端 → 金蝶苍穹 Agent OpenAPI 自动调用
 
 ### 2.1 Agent 远程调用参数（CampusPilot → 金蝶苍穹）
 
 | 配置项 | 内容 |
 |---|---|
-| **接口说明** | CampusPilot 后端通过 HTTP POST 调用金蝶苍穹 Agent API，传入校园上下文数据，获取 AI 分析结果 |
+| **接口说明** | CampusPilot 后端自动鉴权、发现助手、创建会话并通过回调获取 AI 分析结果 |
 | **请求方式** | POST |
-| **请求路径** | `{CAMPUSPILOT_AGENT_API_URL}`（环境变量配置） |
-| **超时时间** | `CAMPUSPILOT_AGENT_TIMEOUT_MS`（默认 8000ms） |
-| **认证方式** | Bearer Token → `{CAMPUSPILOT_AGENT_API_KEY}` |
+| **请求路径** | `/v2/gai/assistants`、`/v2/gai/newsession`、`/v2/gai/chat`（由后端自动拼接） |
+| **超时时间** | `KINGDEE_TIMEOUT`；回调等待使用 `CAMPUSPILOT_AGENT_RESPONSE_WAIT_MS` |
+| **认证方式** | 后端通过 OpenAPI 凭据自动获取 accessToken，并放入 `accessToken` Header |
 | **Content-Type** | application/json |
 
 **输入参数（请求体）：**
 
 | 参数名 | 类型 | 说明 |
 |---|---|---|
-| question | String | 用户自然语言问题 |
-| role | String | 当前用户角色 |
-| campusContext | Object | 校园上下文数据（见下方 campusContext 结构） |
+| sessionId | String | 后端自动创建并缓存的 Agent 会话 ID |
+| chatTraceId | String | 后端为每次问题自动生成的消息 ID |
+| message.query | String | 用户自然语言问题 |
+| message.inputParams | Object | 当前角色和校园上下文数据 |
 
 **campusContext 结构：**
 
@@ -187,7 +189,7 @@
 
 | Header 名 | 值 | 说明 |
 |---|---|---|
-| X-CampusPilot-Agent-Mode | `remote-proxy` | 金蝶 Agent API 已配置，远程代理模式 |
+| X-CampusPilot-Agent-Mode | `openapi-auto` | 金蝶 Agent OpenAPI 凭据已配置，自动接入模式 |
 | X-CampusPilot-Agent-Mode | `local-fallback` | 未配置金蝶 API，本地规则兜底 |
 
 ---
@@ -196,6 +198,11 @@
 
 | 变量名 | 说明 | 默认值 |
 |---|---|---|
-| `CAMPUSPILOT_AGENT_API_URL` | 金蝶苍穹 Agent API 完整地址 | 空（不配置则使用本地兜底） |
-| `CAMPUSPILOT_AGENT_API_KEY` | 金蝶苍穹 Agent API 认证 Token | 空 |
-| `CAMPUSPILOT_AGENT_TIMEOUT_MS` | Agent API 调用超时（毫秒） | 8000 |
+| `KINGDEE_BASE_URL` | 金蝶苍穹平台基础地址，Agent 路径自动派生 | `http://127.0.0.1:8881` |
+| `KINGDEE_CLIENT_ID` / `KINGDEE_CLIENT_SECRET` | OpenAPI 第三方应用凭据 | 空 |
+| `KINGDEE_USERNAME` / `KINGDEE_ACCOUNT_ID` | OpenAPI 代理用户和数据中心 | 空 |
+| `CAMPUSPILOT_PUBLIC_BASE_URL` | 金蝶可访问的后端公网回调地址 | 本机地址（仅开发） |
+| `CAMPUSPILOT_AGENT_NAME` | 自动查找的助手名称 | CampusPilot 启航智伴学业成长助手 |
+| `CAMPUSPILOT_AGENT_ASSISTANT_ID` | 可选助手 ID，填写后跳过清单查询 | 空 |
+| `CAMPUSPILOT_AGENT_CALLBACK_TOKEN` | 可选回调校验 Token，留空自动生成 | 空 |
+| `CAMPUSPILOT_AGENT_RESPONSE_WAIT_MS` | 同步等待回答回调时间（毫秒） | 30000 |

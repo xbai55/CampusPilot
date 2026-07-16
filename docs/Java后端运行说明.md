@@ -90,13 +90,18 @@ curl.exe -s http://127.0.0.1:8787/api/campuspilot/health
 
 ## 5. 接入真实金蝶 Agent API
 
-默认不配置 Agent API 时，后端使用本地兜底回答，保证演示不中断。
+默认不配置 OpenAPI 凭据时，后端使用本地兜底回答，保证演示不中断。
 
 接入真实金蝶 Agent 时，在云主机或 PowerShell 里配置：
 
 ```powershell
-$env:CAMPUSPILOT_AGENT_API_URL="https://你的金蝶Agent接口地址"
-$env:CAMPUSPILOT_AGENT_API_KEY="你的接口密钥"
+$env:KINGDEE_BASE_URL="https://你的苍穹平台地址"
+$env:KINGDEE_CLIENT_ID="第三方应用编码"
+$env:KINGDEE_CLIENT_SECRET="认证密钥"
+$env:KINGDEE_USERNAME="代理用户"
+$env:KINGDEE_ACCOUNT_ID="数据中心ID"
+$env:CAMPUSPILOT_PUBLIC_BASE_URL="https://你的后端公网域名"
+$env:CAMPUSPILOT_AGENT_NAME="CampusPilot 启航智伴学业成长助手"
 ```
 
 再运行：
@@ -105,17 +110,17 @@ $env:CAMPUSPILOT_AGENT_API_KEY="你的接口密钥"
 .\scripts\run.ps1
 ```
 
-后端会把前端问题以 JSON POST 到金蝶 Agent：
+后端会自动获取 accessToken、查找助手、创建会话，再把问题封装为 `/v2/gai/chat` 请求：
 
 ```json
 {
-  "question": "请分析张明远为什么是高风险",
-  "role": "辅导员",
-  "campusContext": {}
+  "sessionId": "自动创建并缓存",
+  "chatTraceId": "自动生成",
+  "message": {"query": "请分析张明远为什么是高风险", "inputParams": {}}
 }
 ```
 
-如果金蝶 Agent 返回 JSON，后端直接透传；如果返回纯文本，后端会包装成前端可识别的 `answer` 字段。
+回答通过后端 callback 接收，并包装成前端可识别的 `answer` 字段。
 
 ## 6. 仍需注意
 

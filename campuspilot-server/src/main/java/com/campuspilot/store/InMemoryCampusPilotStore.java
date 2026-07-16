@@ -129,8 +129,9 @@ public final class InMemoryCampusPilotStore {
     public synchronized String integrationStatusJson() {
         return Json.object(
                 Json.field("kingdeeBaseUrl", config.kingdeeBaseUrl()),
-                Json.field("agentMode", config.agentApiUrl().isBlank() ? "本地 Agent 兜底，可通过环境变量切换金蝶 Agent API" : "金蝶 Agent API 远程代理"),
-                Json.field("agentApiUrl", config.agentApiUrl().isBlank() ? "未配置" : config.agentApiUrl()),
+                Json.field("agentMode", config.agentOpenApiConfigured() ? "金蝶 Agent OpenAPI 自动发现" : "本地 Agent 兜底"),
+                Json.field("agentName", config.agentName()),
+                Json.field("agentApi", config.kingdeeBaseUrl() + "/v2/gai/*"),
                 Json.rawField("objects", Json.array(List.of(
                         Json.object(Json.field("name", "学生画像"), Json.field("code", "cp_student_profile"), Json.field("status", "已建模"), Json.intField("fields", 12)),
                         Json.object(Json.field("name", "课程成绩"), Json.field("code", "cp_course_score"), Json.field("status", "已建模"), Json.intField("fields", 8)),
@@ -156,14 +157,14 @@ public final class InMemoryCampusPilotStore {
                         Json.object(Json.field("name", "表单及插件开发"), Json.field("status", "已设计"), Json.field("detail", "预警单确认、导师计划、学生反馈和结案动作对应表单插件事件。")),
                         Json.object(Json.field("name", "流程服务"), Json.field("status", "已设计"), Json.field("detail", "风险识别 -> 预警生成 -> 确认 -> 帮扶 -> 反馈 -> 复评结案。")),
                         Json.object(Json.field("name", "报表"), Json.field("status", "已实现前端看板"), Json.field("detail", "风险分布、状态分布、趋势、专业对比和帮扶成效。")),
-                        Json.object(Json.field("name", "集成开发"), Json.field("status", "已预留"), Json.field("detail", "通过 CAMPUSPILOT_AGENT_API_URL 与金蝶 Agent API / OpenAPI 边界对接。"))
+                        Json.object(Json.field("name", "集成开发"), Json.field("status", "已实现"), Json.field("detail", "后端通过 OpenAPI 自动鉴权、发现助手、创建会话并接收回调。"))
                 )))
         );
     }
 
     public synchronized String agentWorkflowJson() {
         return Json.object(
-                Json.field("agentName", "CampusPilot 学业成长助手"),
+                Json.field("agentName", "CampusPilot 启航智伴学业成长助手"),
                 Json.field("modelRoute", "通过苍穹平台统一接入 DeepSeek / 豆包 / 通义千问等模型"),
                 Json.rawField("rag", Json.array(List.of(
                         Json.object(Json.field("source", "学生画像知识库"), Json.field("content", "学生基础信息、成长目标、课程短板和风险规则。")),
@@ -200,7 +201,7 @@ public final class InMemoryCampusPilotStore {
                 Json.object(Json.field("layer", "前端"), Json.field("unit", "campuspilot-kwc build 静态资源"), Json.field("deploy", "可由 Java 静态服务、Nginx 或对象存储托管。")),
                 Json.object(Json.field("layer", "业务服务"), Json.field("unit", "campuspilot-server Java 21 HTTP 服务"), Json.field("deploy", "无框架依赖，适合容器化和云主机部署。")),
                 Json.object(Json.field("layer", "数据层"), Json.field("unit", "PostgreSQL schema.sql / seed.sql"), Json.field("deploy", "当前内存数据可平滑迁移到 PostgreSQL。")),
-                Json.object(Json.field("layer", "Agent 集成"), Json.field("unit", "CAMPUSPILOT_AGENT_API_URL"), Json.field("deploy", "通过环境变量切换本地兜底与远程金蝶 Agent API。")),
+                Json.object(Json.field("layer", "Agent 集成"), Json.field("unit", "KINGDEE_BASE_URL + OpenAPI 凭据"), Json.field("deploy", "后端自动获取 accessToken 并调用 /v2/gai 接口。")),
                 Json.object(Json.field("layer", "可观测"), Json.field("unit", "health / audit-logs"), Json.field("deploy", "提供健康检查、操作审计和 Agent 模式响应头。"))
         ));
     }

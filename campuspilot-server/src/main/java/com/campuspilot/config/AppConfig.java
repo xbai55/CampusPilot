@@ -7,9 +7,6 @@ public record AppConfig(
         String host,
         int port,
         Path staticRoot,
-        String agentApiUrl,
-        String agentApiKey,
-        int agentTimeoutMs,
         String kingdeeBaseUrl,
         String kingdeeAccessToken,
         String kingdeeClientId,
@@ -23,22 +20,22 @@ public record AppConfig(
         String apiBearerToken,
         String workflowApiUrl,
         String workflowApiKey,
-        int workflowTimeoutMs
+        int workflowTimeoutMs,
+        String publicBaseUrl,
+        String agentName,
+        String agentAssistantId,
+        String agentCallbackToken,
+        int agentResponseWaitMs
 ) {
     public static AppConfig load(String[] args) {
         int cliPort = args.length > 0 ? parseInt(args[0], -1) : -1;
         String host = env("CAMPUSPILOT_HOST", "0.0.0.0");
         int port = cliPort > 0 ? cliPort : parseInt(env("CAMPUSPILOT_PORT", "8787"), 8787);
         Path staticRoot = Path.of(env("CAMPUSPILOT_STATIC_ROOT", "../campuspilot-home")).toAbsolutePath().normalize();
-        String agentApiUrl = env("CAMPUSPILOT_AGENT_API_URL", "");
-        String agentApiKey = env("CAMPUSPILOT_AGENT_API_KEY", "");
         return new AppConfig(
                 host,
                 port,
                 staticRoot,
-                agentApiUrl,
-                agentApiKey,
-                parseInt(env("CAMPUSPILOT_AGENT_TIMEOUT_MS", "8000"), 8000),
                 stripTrailingSlash(envAlias("KINGDEE_BASE_URL", "CAMPUSPILOT_KINGDEE_BASE_URL", "http://127.0.0.1:8881")),
                 envAlias("KINGDEE_ACCESS_TOKEN", "CAMPUSPILOT_KINGDEE_ACCESS_TOKEN", ""),
                 envAlias("KINGDEE_CLIENT_ID", "CAMPUSPILOT_KINGDEE_CLIENT_ID", ""),
@@ -50,9 +47,14 @@ public record AppConfig(
                 parseInt(env("CAMPUSPILOT_WORKER_THREADS", "12"), 12),
                 env("CAMPUSPILOT_CORS_ALLOWED_ORIGINS", "http://127.0.0.1:8881"),
                 env("CAMPUSPILOT_API_BEARER_TOKEN", ""),
-                env("CAMPUSPILOT_WORKFLOW_API_URL", agentApiUrl),
-                env("CAMPUSPILOT_WORKFLOW_API_KEY", agentApiKey),
-                parseInt(env("CAMPUSPILOT_WORKFLOW_TIMEOUT_MS", "12000"), 12000)
+                env("CAMPUSPILOT_WORKFLOW_API_URL", ""),
+                env("CAMPUSPILOT_WORKFLOW_API_KEY", ""),
+                parseInt(env("CAMPUSPILOT_WORKFLOW_TIMEOUT_MS", "12000"), 12000),
+                stripTrailingSlash(env("CAMPUSPILOT_PUBLIC_BASE_URL", "http://127.0.0.1:" + port)),
+                env("CAMPUSPILOT_AGENT_NAME", "CampusPilot 启航智伴学业成长助手"),
+                env("CAMPUSPILOT_AGENT_ASSISTANT_ID", ""),
+                env("CAMPUSPILOT_AGENT_CALLBACK_TOKEN", ""),
+                parseInt(env("CAMPUSPILOT_AGENT_RESPONSE_WAIT_MS", "30000"), 30000)
         );
     }
 
@@ -69,6 +71,11 @@ public record AppConfig(
 
     public boolean workflowConfigured() {
         return workflowApiUrl != null && !workflowApiUrl.isBlank();
+    }
+
+    public boolean agentOpenApiConfigured() {
+        return (!kingdeeAccessToken.isBlank() || hasKingdeeCredentials())
+                && (!agentAssistantId.isBlank() || !agentName.isBlank());
     }
 
     public boolean requiresBearerToken() {

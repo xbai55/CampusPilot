@@ -32,7 +32,9 @@ public final class CampusPilotApplication {
         System.out.println("CampusPilot Java backend started");
         System.out.println("  URL: http://" + config.hostForLog() + ":" + config.port() + "/index.html#dashboard");
         System.out.println("  Static root: " + config.staticRoot());
-        System.out.println("  Agent mode: " + (config.agentApiUrl().isBlank() ? "local fallback" : "remote API proxy"));
+        System.out.println("  Agent mode: " + (config.agentOpenApiConfigured()
+                ? "Kingdee OpenAPI auto discovery: " + config.agentName()
+                : "local fallback"));
         System.out.println("  Kingdee data mode: " + kingdeeDataClient.dataMode());
     }
 }

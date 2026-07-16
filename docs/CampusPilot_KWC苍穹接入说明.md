@@ -79,5 +79,5 @@ npm run deploy
 ## 平台侧仍需配置
 
 1. 在苍穹平台中准备方案 ID / 领域 ID / 开发商标识，与元数据中的 `moduleid=cp`、`isv=campuspilot` 对齐。
-2. 配置真实金蝶 Agent 或 OpenAPI 网关，将地址填入组件属性 `apiBase`，或由 Java 后端通过 `CAMPUSPILOT_AGENT_API_URL` 代理。
+2. 在 Java 后端配置苍穹 OpenAPI 凭据和公网回调地址；后端自动查找“CampusPilot 启航智伴学业成长助手”并代理调用，密钥不进入 KWC。
 3. 若比赛要求真实数据库，继续把 Java 后端从 `InMemoryCampusPilotStore` 切换到 PostgreSQL/JDBC；当前 KWC 组件 API 路径不需要改。

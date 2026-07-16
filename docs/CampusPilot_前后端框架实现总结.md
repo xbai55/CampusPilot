@@ -423,16 +423,22 @@ Agent 问答的联动方式如下：
 当前后端已经预留环境变量：
 
 ```Plain Text
-CAMPUSPILOT_AGENT_API_URL
-CAMPUSPILOT_AGENT_API_KEY
-CAMPUSPILOT_AGENT_TIMEOUT_MS
+KINGDEE_BASE_URL
+KINGDEE_CLIENT_ID / KINGDEE_CLIENT_SECRET
+KINGDEE_USERNAME / KINGDEE_ACCOUNT_ID
+CAMPUSPILOT_PUBLIC_BASE_URL
+CAMPUSPILOT_AGENT_NAME
 ```
 
 接入真实 Agent 时，只需要在云主机或 PowerShell 配置：
 
 ```powershell
-$env:CAMPUSPILOT_AGENT_API_URL="https://你的金蝶Agent接口地址"
-$env:CAMPUSPILOT_AGENT_API_KEY="你的接口密钥"
+$env:KINGDEE_BASE_URL="https://你的苍穹平台地址"
+$env:KINGDEE_CLIENT_ID="第三方应用编码"
+$env:KINGDEE_CLIENT_SECRET="认证密钥"
+$env:KINGDEE_USERNAME="代理用户"
+$env:KINGDEE_ACCOUNT_ID="数据中心ID"
+$env:CAMPUSPILOT_PUBLIC_BASE_URL="https://你的后端公网域名"
 ```
 
 然后启动 Java 后端：
@@ -465,8 +471,12 @@ POST /api/campuspilot/agent/chat
 export CAMPUSPILOT_HOST=0.0.0.0
 export CAMPUSPILOT_PORT=8787
 export CAMPUSPILOT_STATIC_ROOT=/opt/campuspilot/campuspilot-home
-export CAMPUSPILOT_AGENT_API_URL="https://你的金蝶Agent接口地址"
-export CAMPUSPILOT_AGENT_API_KEY="你的接口密钥"
+export KINGDEE_BASE_URL="https://你的苍穹平台地址"
+export KINGDEE_CLIENT_ID="第三方应用编码"
+export KINGDEE_CLIENT_SECRET="认证密钥"
+export KINGDEE_USERNAME="代理用户"
+export KINGDEE_ACCOUNT_ID="数据中心ID"
+export CAMPUSPILOT_PUBLIC_BASE_URL="https://你的后端公网域名"
 ```
 
 访问地址：

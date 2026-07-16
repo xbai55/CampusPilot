@@ -8,6 +8,7 @@ public final class AllTests {
         RiskServiceTest.run();
         MissingKapiServicesTest.run();
         BackendRequirementsTest.run();
+        AgentOpenApiFlowTest.run();
         System.out.println("All CampusPilot backend tests passed.");
     }
 }

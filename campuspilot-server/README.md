@@ -153,10 +153,24 @@ Invoke-RestMethod -Headers $headers `
 对象状态只会在实际 KAPI 请求成功后显示 `connected`；仅填写 Token 时显示
 `configured-unverified`，失败显示 `failed`，不会把“已配置”误报成“已连接”。
 
-## Agent/任务流网关契约
+## Agent OpenAPI 自动接入
 
-`CAMPUSPILOT_AGENT_API_URL` 用于问答；`CAMPUSPILOT_WORKFLOW_API_URL` 用于写操作和任务流。
-若工作流 URL/Key 留空，会沿用 Agent URL/Key。后端向工作流入口发送：
+无需填写 Agent 完整地址和 Agent Key。后端复用 `KINGDEE_BASE_URL` 与 OpenAPI 凭据，自动：
+
+1. `POST /kapi/oauth2/getToken` 获取并缓存 `accessToken`；
+2. `POST /v2/gai/assistants` 按名称查找“CampusPilot 启航智伴学业成长助手”；
+3. `POST /v2/gai/newsession` 为每个登录用户创建并缓存独立会话；
+4. `POST /v2/gai/chat` 发送问题；
+5. 通过 `POST /api/campuspilot/agent/callback` 接收回答并校验回调 Token。
+
+生产环境必须把 `CAMPUSPILOT_PUBLIC_BASE_URL` 配成金蝶平台可以访问的 HTTPS 后端地址。
+若 30 秒内没有收到回答，聊天接口会返回 `pending=true` 和 `chatTraceId`，可调用
+`GET /api/campuspilot/agent/results/{chatTraceId}` 查询迟到的回调结果。
+
+## 写操作/任务流网关契约
+
+`CAMPUSPILOT_WORKFLOW_API_URL` 和 `CAMPUSPILOT_WORKFLOW_API_KEY` 只用于写操作和任务流，
+不与 Agent OpenAPI 共用。后端向工作流入口发送：
 
 ~~~json
 {
