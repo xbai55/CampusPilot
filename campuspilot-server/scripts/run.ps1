@@ -3,6 +3,12 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $out = Join-Path $root "out"
 $defaultStaticRoot = Resolve-Path -LiteralPath (Join-Path $root "..\campuspilot-home")
+$localConfig = Join-Path $root "config\application.local.ps1"
+
+if (Test-Path -LiteralPath $localConfig) {
+    . $localConfig
+    Write-Host "Loaded local configuration: $localConfig"
+}
 
 if (-not (Test-Path -LiteralPath $out)) {
     & (Join-Path $PSScriptRoot "build.ps1")

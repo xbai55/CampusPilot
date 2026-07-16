@@ -10,6 +10,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 public final class AgentClient {
@@ -17,6 +18,8 @@ public final class AgentClient {
     private final InMemoryCampusPilotStore store;
     private final KingdeeDataClient kingdeeDataClient;
     private final HttpClient httpClient;
+    private volatile long lastSuccessAt;
+    private volatile String lastError = "";
 
     public AgentClient(AppConfig config, InMemoryCampusPilotStore store, KingdeeDataClient kingdeeDataClient) {
         this.config = config;
@@ -57,6 +60,8 @@ public final class AgentClient {
             }
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                lastSuccessAt = System.currentTimeMillis();
+                lastError = "";
                 String responseBody = response.body() == null ? "" : response.body().trim();
                 if (responseBody.startsWith("{") && responseBody.endsWith("}")) {
                     return responseBody;
@@ -67,10 +72,25 @@ public final class AgentClient {
                         Json.field("source", "Kingdee Agent API")
                 );
             }
+            lastError = "Agent HTTP " + response.statusCode();
         } catch (Exception ex) {
+            lastError = shortText(ex.getMessage());
             store.addAudit("系统", "金蝶 Agent API 调用失败，已启用本地兜底：" + shortText(ex.getMessage()));
         }
         return "";
+    }
+
+    public String statusJson() {
+        String state = config.agentApiUrl().isBlank() ? "unconfigured"
+                : lastSuccessAt > 0 ? "connected"
+                : lastError.isBlank() ? "configured-unverified" : "failed";
+        return Json.object(
+                Json.boolField("configured", !config.agentApiUrl().isBlank()),
+                Json.field("state", state),
+                Json.field("url", config.agentApiUrl().isBlank() ? "未配置" : config.agentApiUrl()),
+                Json.field("lastSuccessAt", lastSuccessAt == 0 ? "" : Instant.ofEpochMilli(lastSuccessAt).toString()),
+                Json.field("lastError", lastError)
+        );
     }
 
     private String localFallback(String question, String role) {
@@ -92,7 +112,9 @@ public final class AgentClient {
         return Json.object(
                 Json.field("answer", answer),
                 Json.rawField("chips", Json.stringArray(chips)),
-                Json.field("source", config.agentApiUrl().isBlank() ? "CampusPilot Java Local Fallback" : "CampusPilot Java Agent Proxy Fallback")
+                Json.field("source", config.agentApiUrl().isBlank() ? "CampusPilot Java Local Fallback" : "CampusPilot Java Agent Proxy Fallback"),
+                Json.field("dataSource", "local-demo"),
+                Json.boolField("demo", true)
         );
     }
 

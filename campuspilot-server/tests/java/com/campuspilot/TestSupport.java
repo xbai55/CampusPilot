@@ -13,11 +13,17 @@ final class TestSupport {
     private TestSupport() {}
 
     static AppConfig config(String baseUrl, String staticToken, boolean credentials) {
-        return new AppConfig("127.0.0.1", 0, Path.of("."), "", "", 1000,
+        return config(baseUrl, staticToken, credentials, "", "", "", "http://127.0.0.1:8881");
+    }
+
+    static AppConfig config(String baseUrl, String staticToken, boolean credentials,
+                            String agentUrl, String workflowUrl, String bearerToken, String allowedOrigins) {
+        return new AppConfig("127.0.0.1", 0, Path.of("."), agentUrl, "agent-secret", 1000,
                 baseUrl, staticToken,
                 credentials ? "client" : "", credentials ? "secret" : "",
                 credentials ? "user" : "", credentials ? "account" : "",
-                "zh_CN", 1000, 1);
+                "zh_CN", 1000, 1,
+                allowedOrigins, bearerToken, workflowUrl, "workflow-secret", 1000);
     }
 
     static HttpServer server() throws IOException {

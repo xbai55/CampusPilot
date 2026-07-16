@@ -8,6 +8,7 @@ import com.campuspilot.util.Json;
 import com.campuspilot.util.RequestUtil.UserContext;
 
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -16,10 +17,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Server-side adapter for CampusPilot business-object APIs published by Kingdee AI Cangqiong. */
 public final class KingdeeDataClient {
-    private static final String PROFILE = "/kapi/v2/code/code_campus_pilot/code_cp_student_profile/cp_student_profile_query";
-    private static final String COURSE = "/kapi/v2/code/code_campus_pilot/code_cp_course_score/cp_course_score_query";
-    private static final String BEHAVIOR = "/kapi/v2/code/code_campus_pilot/code_cp_learning_behavior/cp_learning_behavior_query";
-    private static final String WARNING = "/kapi/v2/code/code_campus_pilot/code_cp_risk_warning/cp_risk_warning_query";
+    public static final String PROFILE_ENDPOINT = "/kapi/v2/code/code_campus_pilot/code_cp_student_profile/cp_student_profile_query";
+    public static final String COURSE_ENDPOINT = "/kapi/v2/code/code_campus_pilot/code_cp_course_score/cp_course_score_query";
+    public static final String BEHAVIOR_ENDPOINT = "/kapi/v2/code/code_campus_pilot/code_cp_learning_behavior/cp_learning_behavior_query";
+    public static final String WARNING_ENDPOINT = "/kapi/v2/code/code_campus_pilot/code_cp_risk_warning/cp_risk_warning_query";
+    private static final String PROFILE = PROFILE_ENDPOINT;
+    private static final String COURSE = COURSE_ENDPOINT;
+    private static final String BEHAVIOR = BEHAVIOR_ENDPOINT;
+    private static final String WARNING = WARNING_ENDPOINT;
     private static final String GROWTH_PLAN = "/kapi/v2/code/code_campus_pilot/code_growthplan/growthplan";
     private static final String TRAJECTORY = "/kapi/v2/code/code_campus_pilot/code_studenttrajectory/student_trajectory_query";
     private static final String MULTI_BEHAVIOR = "/kapi/v2/code/code_campus_pilot/code_stumultibehaviorrec/stumultibehaviorrec";
@@ -35,6 +40,7 @@ public final class KingdeeDataClient {
     private final InMemoryCampusPilotStore store;
     private final KingdeeClient client;
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    private final Map<String, ObjectState> objectStates = new ConcurrentHashMap<>();
     private volatile String lastError = "";
     private volatile long lastSuccessAt;
 
@@ -49,7 +55,12 @@ public final class KingdeeDataClient {
     }
 
     public String dataMode() {
-        return configured() ? "kingdee-api" : "local-fallback";
+        if (!configured()) return "local-fallback";
+        boolean success = objectStates.values().stream().anyMatch(state -> state.lastSuccessAt() > 0);
+        boolean failure = objectStates.values().stream().anyMatch(state -> !state.lastError().isBlank());
+        if (failure && success) return "kingdee-api-degraded";
+        if (failure) return "local-fallback";
+        return success ? "kingdee-api" : "kingdee-api-unverified";
     }
 
     public String studentsJson(UserContext user) {
@@ -110,21 +121,34 @@ public final class KingdeeDataClient {
         );
     }
 
-    public String integrationJson() {
-        String connection = !configured() ? "未配置 accessToken，使用本地演示数据"
-                : lastSuccessAt > 0 ? "已连接金蝶业务对象 API"
-                : lastError.isBlank() ? "已配置，等待首次请求" : "调用失败，已自动回退本地数据";
+    public String integrationJson(String agentStatusJson, String workflowStatusJson) {
+        probeCoreObjects();
+        String mode = dataMode();
+        String connection = switch (mode) {
+            case "kingdee-api" -> "已连接金蝶业务对象 API";
+            case "kingdee-api-degraded" -> "部分业务对象已连接，部分调用失败";
+            case "kingdee-api-unverified" -> "已配置，等待首次请求验证";
+            default -> configured() ? "调用失败，已回退本地演示数据" : "未配置金蝶凭据，使用本地演示数据";
+        };
         return Json.object(
                 Json.field("kingdeeBaseUrl", config.kingdeeBaseUrl()),
-                Json.field("dataMode", dataMode()),
+                Json.field("dataMode", mode),
                 Json.field("connection", connection),
-                Json.field("lastError", lastError),
+                Json.field("lastSuccessAt", lastSuccessAt == 0 ? "" : Instant.ofEpochMilli(lastSuccessAt).toString()),
+                Json.field("lastError", latestError()),
                 Json.field("agentMode", config.agentApiUrl().isBlank() ? "本地 Agent 兜底" : "金蝶 Agent API 远程代理"),
                 Json.field("agentApiUrl", config.agentApiUrl().isBlank() ? "未配置" : config.agentApiUrl()),
+                Json.rawField("agent", agentStatusJson),
+                Json.rawField("workflow", workflowStatusJson),
                 Json.rawField("thirdPartyApp", Json.object(
                         Json.field("appId", "campuspilot_isv"),
                         Json.field("auth", "accessToken / API 授权 / IP 白名单"),
-                        Json.field("status", configured() ? "业务对象 API 已配置" : "待配置 accessToken")
+                        Json.field("status", switch (mode) {
+                            case "kingdee-api" -> "业务对象 API 已验证";
+                            case "kingdee-api-degraded" -> "部分业务对象 API 异常";
+                            case "kingdee-api-unverified" -> "业务对象 API 已配置，待验证";
+                            default -> configured() ? "业务对象 API 调用失败" : "待配置 accessToken 或客户端凭据";
+                        })
                 )),
                 Json.rawField("objects", Json.array(List.of(
                         objectStatus("学生画像", "cp_student_profile", 28, PROFILE),
@@ -148,6 +172,11 @@ public final class KingdeeDataClient {
                         "GET /api/student/learning/{student_id}", "GET /api/student/risk-warning/{student_id}",
                         "GET /api/student/opportunities/{student_id}", "GET /api/student/notifications/{student_id}",
                         "GET /api/student/study-checkins/{student_id}", "GET /api/student/course-ability-mappings",
+                        "GET /api/campuspilot/students/{studentNo}/trajectory",
+                        "GET /api/campuspilot/students/{studentNo}/profile-analysis",
+                        "GET /api/campuspilot/students/{studentNo}/opportunities",
+                        "POST /api/campuspilot/plans/generate", "POST /api/campuspilot/risk/batch-scan",
+                        "GET /api/campuspilot/tasks?role={role}", "PATCH /api/campuspilot/tasks/{id}",
                         "POST /api/campuspilot/agent/chat"
                 )))
         );
@@ -177,13 +206,33 @@ public final class KingdeeDataClient {
         try {
             List<Map<String, String>> rows = client.getRows(path);
             cache.put(path, new CacheEntry(now, rows));
+            objectStates.put(path, new ObjectState(now, "", rows.size()));
             lastSuccessAt = now;
             lastError = "";
             return rows;
         } catch (Exception ex) {
             lastError = shortText(ex.getMessage());
+            ObjectState previous = objectStates.get(path);
+            objectStates.put(path, new ObjectState(previous == null ? 0 : previous.lastSuccessAt(), lastError,
+                    previous == null ? 0 : previous.rowCount()));
             return cached == null ? null : cached.rows;
         }
+    }
+
+    private void probeCoreObjects() {
+        if (!configured()) return;
+        queryRows(PROFILE);
+        queryRows(COURSE);
+        queryRows(BEHAVIOR);
+        queryRows(WARNING);
+    }
+
+    private String latestError() {
+        return objectStates.values().stream()
+                .map(ObjectState::lastError)
+                .filter(value -> !value.isBlank())
+                .findFirst()
+                .orElse(lastError);
     }
     // Mapping helpers are kept explicit so Kingdee field codes remain auditable.
     private String studentJson(Map<String, String> row) {
@@ -252,8 +301,16 @@ public final class KingdeeDataClient {
     }
 
     private String objectStatus(String name, String code, int fields, String path) {
+        ObjectState state = objectStates.get(path);
+        String status = !configured() ? "local-fallback"
+                : state == null ? "configured-unverified"
+                : !state.lastError().isBlank() ? "failed"
+                : state.lastSuccessAt() > 0 ? "connected" : "configured-unverified";
         return Json.object(Json.field("name", name), Json.field("code", code),
-                Json.field("status", configured() ? "API 已配置" : "本地兜底"), Json.intField("fields", fields), Json.field("path", path));
+                Json.field("status", status), Json.intField("fields", fields), Json.field("path", path),
+                Json.intField("rowCount", state == null ? 0 : state.rowCount()),
+                Json.field("lastSuccessAt", state == null || state.lastSuccessAt() == 0 ? "" : Instant.ofEpochMilli(state.lastSuccessAt()).toString()),
+                Json.field("lastError", state == null ? "" : state.lastError()));
     }
 
     private static String riskKey(String level) {
@@ -310,4 +367,5 @@ public final class KingdeeDataClient {
     }
 
     private record CacheEntry(long createdAt, List<Map<String, String>> rows) {}
+    private record ObjectState(long lastSuccessAt, String lastError, int rowCount) {}
 }

@@ -41,6 +41,7 @@ logs/
 .env
 .env.local
 .env.*.local
+campuspilot-server/config/application.local.ps1
 
 # Cache
 .cache/

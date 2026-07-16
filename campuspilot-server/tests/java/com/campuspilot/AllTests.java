@@ -7,6 +7,7 @@ public final class AllTests {
         GrowthPlanServiceTest.run();
         RiskServiceTest.run();
         MissingKapiServicesTest.run();
+        BackendRequirementsTest.run();
         System.out.println("All CampusPilot backend tests passed.");
     }
 }

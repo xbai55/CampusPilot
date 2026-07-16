@@ -54,6 +54,18 @@ public final class RequestUtil {
         return LocalDateTime.now().format(FORMATTER);
     }
 
+    public static String queryValue(HttpExchange exchange, String key, String fallback) {
+        String query = exchange.getRequestURI().getRawQuery();
+        if (query == null || query.isBlank()) return fallback;
+        for (String part : query.split("&")) {
+            String[] pair = part.split("=", 2);
+            if (URLDecoder.decode(pair[0], StandardCharsets.UTF_8).equals(key)) {
+                return pair.length == 2 ? URLDecoder.decode(pair[1], StandardCharsets.UTF_8) : "";
+            }
+        }
+        return fallback;
+    }
+
     public static String roleFromKey(String key) {
         return switch (key == null ? "" : key) {
             case "student" -> "学生";

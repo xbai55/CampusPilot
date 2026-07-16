@@ -17,7 +17,7 @@ campuspilot/
 |---|---|---|
 | `campuspilot-kwc` | React 18 + KWC + CRACO + React Router | 管理仪表盘，含驾驶舱/学生/课程/行为/预警/Agent/工作流等页面，并注册 KWC 自定义元素 |
 | `campuspilot-official-kwc` | 金蝶官方 KWC webpack 模板 | 面向苍穹自定义控件部署的官方模板版本，可作为真实平台接入参考 |
-| `campuspilot-server` | Java 21 + `com.sun.net.httpserver` | RESTful API，Agent 代理转发，内存数据存储 |
+| `campuspilot-server` | Java 21 + `com.sun.net.httpserver` | 金蝶 KAPI、Agent/任务流网关、REST API、CORS 与认证 |
 | `campuspilot-home` | HTML/CSS/JS + Python `http.server` | 门户首页、登录注册、角色路由分发 |
 
 ## 本轮 KWC 优化重点
@@ -33,12 +33,25 @@ campuspilot/
 ### 1. 启动 Java 后端
 
 ```powershell
+git clone https://github.com/xbai55/CampusPilot.git
+cd CampusPilot
+git switch feature/kingdee-api-adaptation
+
+# 复制本地配置模板；application.local.ps1 已被 .gitignore 排除
+Copy-Item campuspilot-server/config/application.example.ps1 `
+  campuspilot-server/config/application.local.ps1
+
+# 编辑 application.local.ps1，填写金蝶和 Agent/任务流配置
 cd campuspilot-server
-.\scripts\build.ps1
+.\scripts\test.ps1
 .\scripts\run.ps1
 ```
 
-访问 http://127.0.0.1:8787
+`run.ps1` 会自动加载 `config/application.local.ps1`。启动后访问：
+
+- 健康检查：http://127.0.0.1:8787/api/campuspilot/health
+- 集成状态：http://127.0.0.1:8787/api/campuspilot/integration-status
+- 门户：http://127.0.0.1:8787/index.html
 
 ### 2. 启动 KWC 前端（开发模式）
 
@@ -80,17 +93,28 @@ python server.py
 | `CAMPUSPILOT_HOST` | 绑定地址 | `0.0.0.0` |
 | `CAMPUSPILOT_PORT` | 监听端口 | `8787` |
 | `CAMPUSPILOT_STATIC_ROOT` | 静态文件目录 | `../campuspilot-home` |
+| `CAMPUSPILOT_CORS_ALLOWED_ORIGINS` | 允许的前端来源，多个值用英文逗号分隔 | `http://127.0.0.1:8881` |
+| `CAMPUSPILOT_API_BEARER_TOKEN` | 可选的后端预设 Bearer Token | 空 |
 | `CAMPUSPILOT_AGENT_API_URL` | 金蝶苍穹 Agent API 地址 | 空（本地兜底） |
 | `CAMPUSPILOT_AGENT_API_KEY` | 金蝶 Agent API 密钥 | 空 |
 | `CAMPUSPILOT_AGENT_TIMEOUT_MS` | Agent 调用超时(ms) | `8000` |
-| `CAMPUSPILOT_KINGDEE_BASE_URL` | 金蝶苍穹业务对象 API 基础地址 | `http://127.0.0.1:8881/ierp` |
-| `CAMPUSPILOT_KINGDEE_ACCESS_TOKEN` | 后端访问金蝶业务对象的 accessToken | 空（本地兜底） |
-| `CAMPUSPILOT_KINGDEE_TIMEOUT_MS` | 金蝶业务对象 API 超时(ms) | `8000` |
+| `CAMPUSPILOT_WORKFLOW_API_URL` | 金蝶 Agent/任务流统一入口；为空时沿用 Agent URL | 空 |
+| `CAMPUSPILOT_WORKFLOW_API_KEY` | 任务流 API Key；为空时沿用 Agent Key | 空 |
+| `KINGDEE_BASE_URL` | 金蝶苍穹平台或 `/ierp` 基础地址 | `http://127.0.0.1:8881` |
+| `KINGDEE_ACCESS_TOKEN` | 可选固定业务对象 accessToken | 空 |
+| `KINGDEE_CLIENT_ID` | 增强型 Token 第三方应用编码 | 空 |
+| `KINGDEE_CLIENT_SECRET` | 增强型 Token 认证密钥，仅后端配置 | 空 |
+| `KINGDEE_USERNAME` | 增强型 Token 代理用户 | 空 |
+| `KINGDEE_ACCOUNT_ID` | 金蝶数据中心 ID | 空 |
+| `KINGDEE_TIMEOUT` | 金蝶业务对象 API 超时(ms) | `8000` |
 | `CAMPUSPILOT_WORKER_THREADS` | 工作线程数 | `12` |
 
-> 不配置 `CAMPUSPILOT_AGENT_API_URL` 时，Agent 问答使用本地规则引擎兜底，方便离线演示。
+固定 `KINGDEE_ACCESS_TOKEN` 与增强型 Token 凭据二选一。旧的
+`CAMPUSPILOT_KINGDEE_*` 变量仍兼容，但新部署优先使用上表变量。
+
+> 不配置 `CAMPUSPILOT_AGENT_API_URL` 时，Agent 问答使用明确标记的本地演示兜底。
 >
-> 不配置 `CAMPUSPILOT_KINGDEE_ACCESS_TOKEN` 时，学生画像、课程成绩、学习行为和风险预警单继续使用本地数据；配置后由 Java 后端调用苍穹 API，并将 `data.rows` 转换为现有页面字段。不要把 accessToken 写入前端。
+> 不配置金蝶凭据时，读取接口会标记 `local-fallback` 或 `unavailable`；未配置任务流时，写接口返回 HTTP 503，不会修改内存并伪装成平台写回。Token、Secret 和 API Key 只能配置在 Java 后端。
 
 ## 演示角色
 
@@ -117,7 +141,14 @@ python server.py
 | 接口 | 方法 | 说明 |
 |---|---|---|
 | `/api/campuspilot/agent/chat` | POST | Agent 问答（转发金蝶苍穹 / 本地兜底） |
-| `/api/campuspilot/warnings/suggest` | POST | Agent 自动生成预警单 |
+| `/api/campuspilot/warnings/suggest` | POST | 通过任务流生成预警草稿；未配置时明确返回 503 |
+| `/api/campuspilot/students/{studentNo}/trajectory` | GET | 成长轨迹与学习打卡 |
+| `/api/campuspilot/students/{studentNo}/profile-analysis` | GET | 画像、课程和行为聚合分析 |
+| `/api/campuspilot/students/{studentNo}/opportunities` | GET | 推荐记录与机会库 |
+| `/api/campuspilot/plans/generate` | POST | 调用成长计划任务流 |
+| `/api/campuspilot/risk/batch-scan` | POST | 调用批量风险筛查任务流 |
+| `/api/campuspilot/tasks?role={role}` | GET | 返回角色待办 |
+| `/api/campuspilot/tasks/{id}` | PATCH | 通过任务流更新待办 |
 | `/api/campuspilot/lowcode-blueprint` | GET | 低代码页面和业务对象蓝图 |
 | `/api/campuspilot/agent-workflow` | GET | Agent 编排流程与节点状态 |
 | `/api/campuspilot/report-center` | GET | 学业风险报表中心数据 |
