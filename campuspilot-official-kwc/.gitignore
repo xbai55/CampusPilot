@@ -1,5 +1,0 @@
-dist/
-node_modules/
-server/isv/
-.dev-server.*.log
-preview.png

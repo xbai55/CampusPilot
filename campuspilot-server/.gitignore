@@ -1,0 +1,4 @@
+out/
+out-test/
+config/application.local.ps1
+*.log
