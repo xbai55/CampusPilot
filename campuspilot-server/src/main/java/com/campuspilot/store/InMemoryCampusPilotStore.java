@@ -131,7 +131,7 @@ public final class InMemoryCampusPilotStore {
                 Json.field("kingdeeBaseUrl", config.kingdeeBaseUrl()),
                 Json.field("agentMode", config.agentOpenApiConfigured() ? "金蝶 Agent OpenAPI 自动发现" : "本地 Agent 兜底"),
                 Json.field("agentName", config.agentName()),
-                Json.field("agentApi", config.kingdeeBaseUrl() + "/v2/gai/*"),
+                Json.field("agentApi", config.kingdeeBaseUrl() + "/kapi/v2/gai/*"),
                 Json.rawField("objects", Json.array(List.of(
                         Json.object(Json.field("name", "学生画像"), Json.field("code", "cp_student_profile"), Json.field("status", "已建模"), Json.intField("fields", 12)),
                         Json.object(Json.field("name", "课程成绩"), Json.field("code", "cp_course_score"), Json.field("status", "已建模"), Json.intField("fields", 8)),

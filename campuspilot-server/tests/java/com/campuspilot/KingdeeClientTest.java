@@ -16,7 +16,7 @@ final class KingdeeClientTest {
         HttpServer server = TestSupport.server();
         AtomicInteger tokens = new AtomicInteger();
         try {
-            server.createContext("/kapi/oauth2/getToken", exchange -> {
+            server.createContext("/ierp/kapi/oauth2/getToken", exchange -> {
                 int n = tokens.incrementAndGet();
                 String body = "{\"data\":{\"access_token\":\"token-" + n
                         + "\",\"expires_in\":\"7200000\"},\"errorCode\":\"0\",\"message\":\"\",\"status\":true}";

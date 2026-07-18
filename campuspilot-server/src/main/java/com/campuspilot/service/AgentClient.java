@@ -4,6 +4,7 @@ import com.campuspilot.config.AppConfig;
 import com.campuspilot.kingdee.KingdeeClient;
 import com.campuspilot.store.InMemoryCampusPilotStore;
 import com.campuspilot.util.Json;
+import com.campuspilot.util.JsonParser;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -13,14 +14,16 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/** Implements the documented Kingdee Agent OpenAPI assistant/session/chat flow. */
+/** Implements the Kingdee Agent assistants/session/chat callback OpenAPI flow. */
 public final class AgentClient {
     private static final String ASSISTANTS = "/v2/gai/assistants";
     private static final String NEW_SESSION = "/v2/gai/newsession";
     private static final String CHAT = "/v2/gai/chat";
+    private static final String NO_AGENT_TEXT = "Agent only returned completion events and did not return answer text.";
 
     private final AppConfig config;
     private final InMemoryCampusPilotStore store;
@@ -30,6 +33,8 @@ public final class AgentClient {
     private final Map<String, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
     private final Map<String, StringBuilder> callbackText = new ConcurrentHashMap<>();
     private final Map<String, String> completed = new ConcurrentHashMap<>();
+    private final Map<String, String> callbackBodies = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> callbackEvents = new ConcurrentHashMap<>();
     private final Map<String, String> sessions = new ConcurrentHashMap<>();
     private volatile String cachedAssistantId = "";
     private volatile long lastSuccessAt;
@@ -52,10 +57,10 @@ public final class AgentClient {
                 return remoteChat(normalized, userName, role, sessionKey, true);
             } catch (Exception ex) {
                 lastError = shortText(ex.getMessage());
-                store.addAudit("系统", "金蝶 Agent OpenAPI 调用失败，已启用本地兜底：" + lastError);
+                store.addAudit("system", "Kingdee Agent OpenAPI call failed, using local fallback: " + lastError);
             }
         }
-        store.addAudit(roleOrAgent(role), "使用本地 Agent 兜底建议：" + shortText(normalized));
+        store.addAudit(roleOrAgent(role), "Using local Agent fallback: " + shortText(normalized));
         return localFallback(normalized);
     }
 
@@ -66,8 +71,11 @@ public final class AgentClient {
         String chatTraceId = UUID.randomUUID().toString();
         CompletableFuture<String> future = new CompletableFuture<>();
         pending.put(chatTraceId, future);
+        String callbackUrl = config.publicBaseUrl() + "/api/campuspilot/agent/callback?token="
+                + URLEncoder.encode(callbackToken, StandardCharsets.UTF_8);
         String body = Json.object(
                 Json.field("sessionId", sessionId),
+                Json.field("callbackUrl", callbackUrl),
                 Json.field("chatTraceId", chatTraceId),
                 Json.rawField("message", Json.object(
                         Json.rawField("inputParams", Json.object(
@@ -84,27 +92,32 @@ public final class AgentClient {
             String answer = future.get(config.agentResponseWaitMs(), TimeUnit.MILLISECONDS);
             lastSuccessAt = System.currentTimeMillis();
             lastError = "";
-            store.addAudit(roleOrAgent(role), "调用金蝶 Agent OpenAPI：" + shortText(question));
+            store.addAudit(roleOrAgent(role), "Called Kingdee Agent OpenAPI: " + shortText(question));
             return Json.object(
                     Json.field("answer", answer),
-                    Json.rawField("chips", Json.stringArray(List.of("金蝶 Agent OpenAPI", "自动助手发现", "会话回调"))),
+                    Json.rawField("chips", Json.stringArray(List.of("Kingdee Agent OpenAPI", "callback", "session"))),
                     Json.field("source", "Kingdee Agent OpenAPI"),
-                    Json.field("assistantId", assistantId), Json.field("sessionId", sessionId),
+                    Json.field("assistantId", assistantId),
+                    Json.field("sessionId", sessionId),
                     Json.field("chatTraceId", chatTraceId),
                     Json.field("requestTraceId", platformTraceId),
-                    Json.field("dataSource", "kingdee-agent"), Json.boolField("demo", false)
+                    Json.field("dataSource", "kingdee-agent"),
+                    Json.boolField("demo", false)
             );
         } catch (TimeoutException ex) {
             pending.remove(chatTraceId);
             lastSuccessAt = System.currentTimeMillis();
-            lastError = "等待 Agent 回调超时";
+            lastError = "waiting for Agent callback timed out";
             return Json.object(
-                    Json.field("answer", "Agent 已接收请求，回答仍在处理中。"),
-                    Json.rawField("chips", Json.stringArray(List.of("异步处理中", "稍后查询", "Agent OpenAPI"))),
+                    Json.field("answer", "Agent has accepted the request and is still processing."),
+                    Json.rawField("chips", Json.stringArray(List.of("pending", "callback", "Agent OpenAPI"))),
                     Json.field("source", "Kingdee Agent OpenAPI"),
-                    Json.field("assistantId", assistantId), Json.field("sessionId", sessionId),
-                    Json.field("chatTraceId", chatTraceId), Json.boolField("pending", true),
-                    Json.field("dataSource", "kingdee-agent"), Json.boolField("demo", false)
+                    Json.field("assistantId", assistantId),
+                    Json.field("sessionId", sessionId),
+                    Json.field("chatTraceId", chatTraceId),
+                    Json.boolField("pending", true),
+                    Json.field("dataSource", "kingdee-agent"),
+                    Json.boolField("demo", false)
             );
         } catch (Exception ex) {
             pending.remove(chatTraceId);
@@ -120,22 +133,27 @@ public final class AgentClient {
         if (!callbackToken.equals(receivedToken)) {
             return Json.object(Json.boolField("ok", false), Json.field("message", "invalid callback token"));
         }
-        String traceId = KingdeeClient.jsonString(body, "chatTraceId");
-        if (traceId.isBlank()) traceId = KingdeeClient.jsonString(body, "traceId");
-        String message = KingdeeClient.jsonString(body, "message");
-        String error = KingdeeClient.jsonString(body, "desc");
-        if (!message.isBlank()) callbackText.computeIfAbsent(traceId, ignored -> new StringBuilder()).append(message);
-        boolean done = body.contains(Json.field("type", "streamDone"))
-                || body.contains(Json.field("type", "waitingDone"))
-                || body.contains(Json.field("type", "error"));
-        if (done && !traceId.isBlank()) {
+        CallbackEvent event;
+        try {
+            event = parseCallback(body);
+        } catch (Exception ex) {
+            return Json.object(Json.boolField("ok", false), Json.field("errorCode", "400"),
+                    Json.field("message", "invalid callback json: " + shortText(ex.getMessage())));
+        }
+        String traceId = event.traceId();
+        if (!traceId.isBlank()) {
+            String rawBody = body == null ? "" : body;
+            callbackBodies.put(traceId, rawBody);
+            callbackEvents.computeIfAbsent(traceId, ignored -> new CopyOnWriteArrayList<>()).add(rawBody);
+        }
+        if (!event.text().isBlank()) {
+            callbackText.computeIfAbsent(traceId, ignored -> new StringBuilder()).append(event.text());
+        }
+        if (event.done() && !traceId.isBlank()) {
             String answer = callbackText.getOrDefault(traceId, new StringBuilder()).toString();
             if (answer.isBlank() && completed.containsKey(traceId)) answer = completed.get(traceId);
-            if (answer.isBlank()) answer = error.isBlank() ? "Agent 已完成处理。" : error;
-            completed.put(traceId, answer);
-            CompletableFuture<String> future = pending.remove(traceId);
-            if (future != null) future.complete(answer);
-            callbackText.remove(traceId);
+            if (answer.isBlank()) answer = event.error().isBlank() ? NO_AGENT_TEXT : "Agent returned error: " + event.error();
+            complete(traceId, answer);
         }
         return Json.object(Json.boolField("ok", true), Json.field("errorCode", "0"), Json.field("message", ""));
     }
@@ -146,7 +164,9 @@ public final class AgentClient {
                 Json.boolField("ok", answer != null),
                 Json.boolField("pending", answer == null),
                 Json.field("chatTraceId", traceId),
-                Json.field("answer", answer == null ? "" : answer)
+                Json.field("answer", answer == null ? "" : answer),
+                Json.field("callbackBody", callbackBodies.getOrDefault(traceId, "")),
+                Json.rawField("callbackEvents", Json.stringArray(callbackEvents.getOrDefault(traceId, List.of())))
         );
     }
 
@@ -199,22 +219,13 @@ public final class AgentClient {
     }
 
     private String localFallback(String question) {
-        String answer;
-        List<String> chips;
-        if (question.contains("预警") || question.contains("风险")) {
-            answer = "建议先核对画像、成绩和行为证据，再由辅导员确认预警、导师制定补强计划。";
-            chips = List.of("生成预警草稿", "导师帮扶", "复评结案");
-        } else if (question.contains("课程") || question.contains("成绩")) {
-            answer = "可以结合课程成绩、出勤和作业完成率生成课程补强任务。";
-            chips = List.of("课程短板", "补强计划", "成长画像");
-        } else {
-            answer = "可以从学生画像、课程成绩、学习行为和风险预警数据形成识别、确认、帮扶、反馈、结案闭环。";
-            chips = List.of("画像", "闭环", "驾驶舱");
-        }
+        String answer = "可以从学生画像、课程成绩、学习行为和风险预警数据形成识别、确认、帮扶、反馈、结案闭环。";
         return Json.object(
-                Json.field("answer", answer), Json.rawField("chips", Json.stringArray(chips)),
+                Json.field("answer", answer),
+                Json.rawField("chips", Json.stringArray(List.of("画像", "闭环", "驾驶舱"))),
                 Json.field("source", "CampusPilot Java Local Fallback"),
-                Json.field("dataSource", "local-demo"), Json.boolField("demo", true)
+                Json.field("dataSource", "local-demo"),
+                Json.boolField("demo", true)
         );
     }
 
@@ -223,7 +234,74 @@ public final class AgentClient {
     }
 
     private static String shortText(String value) {
-        if (value == null || value.isBlank()) return "空请求";
+        if (value == null || value.isBlank()) return "empty request";
         return value.length() > 160 ? value.substring(0, 160) : value;
     }
+
+    private void complete(String traceId, String answer) {
+        completed.put(traceId, answer);
+        CompletableFuture<String> future = pending.remove(traceId);
+        if (future != null) future.complete(answer);
+        callbackText.remove(traceId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static CallbackEvent parseCallback(String body) {
+        Map<String, Object> root = JsonParser.object(body);
+        Object messageValue = root.get("message");
+        Map<String, Object> message = messageValue instanceof Map<?, ?> map ? (Map<String, Object>) map : root;
+        String traceId = string(message.get("chatTraceId"));
+        if (traceId.isBlank()) traceId = string(root.get("chatTraceId"));
+        if (traceId.isBlank()) traceId = string(root.get("traceId"));
+        StringBuilder text = new StringBuilder();
+        String error = "";
+        boolean done = false;
+        Object actionList = message.get("actionList");
+        if (actionList instanceof List<?> actions) {
+            for (Object actionValue : actions) {
+                if (!(actionValue instanceof Map<?, ?> action)) continue;
+                String type = string(action.get("type"));
+                Object dataValue = action.get("data");
+                Map<String, Object> data = dataValue instanceof Map<?, ?> dataMap
+                        ? (Map<String, Object>) dataMap : Map.of();
+                if (traceId.isBlank()) traceId = string(data.get("chatTraceId"));
+                if ("chat".equals(type)) {
+                    text.append(string(data.get("message")));
+                } else if ("multiMsg".equals(type)) {
+                    appendMultiMsgText(text, data.get("msgList"));
+                } else if ("error".equals(type)) {
+                    done = true;
+                    error = firstNonBlank(string(data.get("desc")), string(data.get("message")), string(data.get("code")));
+                } else if ("streamDone".equals(type) || "waitingDone".equals(type)) {
+                    done = true;
+                }
+            }
+        }
+        return new CallbackEvent(traceId, text.toString(), done, error);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void appendMultiMsgText(StringBuilder text, Object msgListValue) {
+        if (!(msgListValue instanceof List<?> msgList)) return;
+        for (Object itemValue : msgList) {
+            if (!(itemValue instanceof Map<?, ?> item)) continue;
+            if ("text".equals(string(item.get("type")))) {
+                if (!text.isEmpty()) text.append('\n');
+                text.append(string(((Map<String, Object>) item).get("value")));
+            }
+        }
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return value;
+        }
+        return "";
+    }
+
+    private static String string(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private record CallbackEvent(String traceId, String text, boolean done, String error) {}
 }

@@ -138,7 +138,7 @@ public final class KingdeeDataClient {
                 Json.field("lastError", latestError()),
                 Json.field("agentMode", config.agentOpenApiConfigured() ? "金蝶 Agent OpenAPI 自动发现" : "本地 Agent 兜底"),
                 Json.field("agentName", config.agentName()),
-                Json.field("agentApi", config.kingdeeBaseUrl() + "/v2/gai/*"),
+                Json.field("agentApi", config.kingdeeBaseUrl() + "/kapi/v2/gai/*"),
                 Json.rawField("agent", agentStatusJson),
                 Json.rawField("workflow", workflowStatusJson),
                 Json.rawField("thirdPartyApp", Json.object(

@@ -99,6 +99,8 @@ public final class KingdeeClient {
                     .timeout(Duration.ofMillis(config.kingdeeTimeoutMs()))
                     .header("Content-Type", "application/json; charset=utf-8")
                     .header("accessToken", token)
+                    .header("access_token", token)
+                    .header("Authorization", "Bearer " + token)
                     .header("Idempotency-Key", UUID.randomUUID().toString())
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody == null ? "{}" : jsonBody, StandardCharsets.UTF_8))
                     .build();
@@ -198,14 +200,15 @@ public final class KingdeeClient {
 
     private URI resolvePlatformUri(String endpoint) {
         String base = config.kingdeeBaseUrl();
-        if (base.endsWith("/ierp")) base = base.substring(0, base.length() - "/ierp".length());
+        if (!base.endsWith("/ierp")) base = base + "/ierp";
         return URI.create(base + (endpoint.startsWith("/") ? endpoint : "/" + endpoint));
     }
 
     private URI resolveOpenApiUri(String endpoint) {
         String base = config.kingdeeBaseUrl();
         String path = endpoint.startsWith("/") ? endpoint : "/" + endpoint;
-        if (base.endsWith("/ierp")) base = base.substring(0, base.length() - "/ierp".length());
+        if (!base.endsWith("/ierp")) base = base + "/ierp";
+        if (!path.startsWith("/kapi/")) path = "/kapi" + path;
         return URI.create(base + path);
     }
 
