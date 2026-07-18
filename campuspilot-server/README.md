@@ -153,15 +153,14 @@ Invoke-RestMethod -Headers $headers `
 对象状态只会在实际 KAPI 请求成功后显示 `connected`；仅填写 Token 时显示
 `configured-unverified`，失败显示 `failed`，不会把“已配置”误报成“已连接”。
 
-## Agent OpenAPI 自动接入
+## Agent OpenAPI 接入
 
-无需填写 Agent 完整地址和 Agent Key。后端复用 `KINGDEE_BASE_URL` 与 OpenAPI 凭据，自动：
+后端按照金蝶官方 [Agent 平台 OpenAPI 文档](https://dev.kingdee.com/open/detail/sdk/2377816720032150528) 接入，无需填写 H5 地址或单独的 Agent Key。后端复用 `KINGDEE_BASE_URL` 与 OpenAPI 凭据，并默认使用已确认的助手 ID `2522880941110602754`：
 
 1. `POST /kapi/oauth2/getToken` 获取并缓存 `accessToken`；
-2. `POST /v2/gai/assistants` 按名称查找“CampusPilot 启航智伴学业成长助手”；
-3. `POST /v2/gai/newsession` 为每个登录用户创建并缓存独立会话；
-4. `POST /v2/gai/chat` 发送问题；
-5. 通过 `POST /api/campuspilot/agent/callback` 接收回答并校验回调 Token。
+2. `POST /v2/gai/newsession` 为每个登录用户创建并缓存独立会话；
+3. `POST /v2/gai/chat` 发送问题；
+4. 通过 `POST /api/campuspilot/agent/callback` 接收回答并校验回调 Token。
 
 生产环境必须把 `CAMPUSPILOT_PUBLIC_BASE_URL` 配成金蝶平台可以访问的 HTTPS 后端地址。
 若 30 秒内没有收到回答，聊天接口会返回 `pending=true` 和 `chatTraceId`，可调用

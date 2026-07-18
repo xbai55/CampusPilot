@@ -97,7 +97,7 @@ python server.py
 | `CAMPUSPILOT_API_BEARER_TOKEN` | 可选的后端预设 Bearer Token | 空 |
 | `CAMPUSPILOT_PUBLIC_BASE_URL` | 金蝶可访问的后端公网地址，用于 Agent 回调 | `http://127.0.0.1:8787`（仅本机开发） |
 | `CAMPUSPILOT_AGENT_NAME` | 自动查找的助手名称 | `CampusPilot 启航智伴学业成长助手` |
-| `CAMPUSPILOT_AGENT_ASSISTANT_ID` | 可选助手 ID；填写后跳过名称查找 | 空 |
+| `CAMPUSPILOT_AGENT_ASSISTANT_ID` | CampusPilot 助手 ID | `2522880941110602754` |
 | `CAMPUSPILOT_AGENT_CALLBACK_TOKEN` | 可选回调校验 Token；留空则启动时自动生成 | 空 |
 | `CAMPUSPILOT_AGENT_RESPONSE_WAIT_MS` | 同步等待 Agent 回调的时间(ms) | `30000` |
 | `CAMPUSPILOT_WORKFLOW_API_URL` | 独立的写操作/任务流入口 | 空 |

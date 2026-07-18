@@ -34,7 +34,7 @@ final class AgentOpenApiFlowTest {
             String apiBase = TestSupport.baseUrl(api);
             AppConfig config = TestSupport.config(TestSupport.baseUrl(upstream), "", true,
                     "", "", "api-secret", "http://127.0.0.1:8881",
-                    apiBase, "", "callback-test", 3000);
+                    apiBase, "2522880941110602754", "callback-test", 3000);
             InMemoryCampusPilotStore store = new InMemoryCampusPilotStore(config);
             KingdeeDataClient dataClient = new KingdeeDataClient(config, store);
             AgentClient agentClient = new AgentClient(config, store, dataClient);
@@ -68,8 +68,8 @@ final class AgentOpenApiFlowTest {
                 sessionCalls.incrementAndGet();
                 requireOpenApiPost(exchange.getRequestMethod(), exchange.getRequestHeaders().getFirst("accessToken"));
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                TestSupport.require(body.contains(Json.field("assistantId", "assistant-001")),
-                        "newsession must use the assistant discovered by name");
+                TestSupport.require(body.contains(Json.field("assistantId", "2522880941110602754")),
+                        "newsession must use the confirmed CampusPilot assistant ID");
                 TestSupport.require(body.contains("/api/campuspilot/agent/callback?token=callback-test"),
                         "newsession must provide the backend callback URL");
                 TestSupport.json(exchange, 200, Json.object(
@@ -108,7 +108,7 @@ final class AgentOpenApiFlowTest {
             HttpResponse<String> anotherUser = chat(apiBase, "查看我的学业建议", "Another-User");
             TestSupport.require(anotherUser.statusCode() == 200,
                     "another authenticated user must receive an independent Agent session");
-            TestSupport.require(assistantCalls.get() == 1, "assistant list should be discovered once and cached");
+            TestSupport.require(assistantCalls.get() == 0, "confirmed assistant ID should skip assistant discovery");
             TestSupport.require(sessionCalls.get() == 2, "Agent sessions should be cached separately per user");
             TestSupport.require(chatCalls.get() == 3, "each question should call /v2/gai/chat");
             TestSupport.require(tokenCalls.get() == 1, "accessToken should be acquired once and cached");

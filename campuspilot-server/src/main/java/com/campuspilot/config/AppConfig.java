@@ -52,7 +52,7 @@ public record AppConfig(
                 parseInt(env("CAMPUSPILOT_WORKFLOW_TIMEOUT_MS", "12000"), 12000),
                 stripTrailingSlash(env("CAMPUSPILOT_PUBLIC_BASE_URL", "http://127.0.0.1:" + port)),
                 env("CAMPUSPILOT_AGENT_NAME", "CampusPilot 启航智伴学业成长助手"),
-                env("CAMPUSPILOT_AGENT_ASSISTANT_ID", ""),
+                env("CAMPUSPILOT_AGENT_ASSISTANT_ID", "2522880941110602754"),
                 env("CAMPUSPILOT_AGENT_CALLBACK_TOKEN", ""),
                 parseInt(env("CAMPUSPILOT_AGENT_RESPONSE_WAIT_MS", "30000"), 30000)
         );
